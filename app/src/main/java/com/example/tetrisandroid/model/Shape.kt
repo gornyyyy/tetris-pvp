@@ -3,6 +3,8 @@ package com.example.tetrisandroid.model
 abstract class Shape(
     var x: Int, var y: Int
 ) {
+    abstract val colorArgb: Int
+
     var matrix: Array<IntArray> = emptyArray()
 
     abstract fun rotate()
