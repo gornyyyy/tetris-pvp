@@ -19,6 +19,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import com.example.tetrisandroid.R
 import com.example.tetrisandroid.data.BestScoreStorage
 import com.example.tetrisandroid.game.Game
@@ -85,7 +87,6 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
         }
     }
 
-    // Перезапускается при gameId ИЛИ isPaused
     LaunchedEffect(gameId, isPaused) {
         if (!isStarted || isPaused) return@LaunchedEffect
         refreshUi()
@@ -98,6 +99,12 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
     }
 
     val state = uiState
+
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        if (isStarted && !isPaused && state.isRunning) {
+            isPaused = true
+        }
+    }
 
     Column(
         modifier = Modifier
