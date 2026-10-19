@@ -7,15 +7,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.tetrisandroid.R
 import com.example.tetrisandroid.data.BestScoreStorage
 import com.example.tetrisandroid.game.Game
 import com.example.tetrisandroid.model.PlayerAction
@@ -45,6 +49,8 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
     var bestScore by remember { mutableStateOf(bestScoreStorage.getBestScore()) }
     var bestLevel by remember { mutableStateOf(bestScoreStorage.getBestLevel()) }
     var isStarted by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }
+    var gameId by remember { mutableStateOf(0) }
 
     var uiState by remember {
         mutableStateOf(
@@ -79,8 +85,9 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
         }
     }
 
-    LaunchedEffect(isStarted) {
-        if (!isStarted) return@LaunchedEffect
+    // Перезапускается при gameId ИЛИ isPaused
+    LaunchedEffect(gameId, isPaused) {
+        if (!isStarted || isPaused) return@LaunchedEffect
         refreshUi()
         while (game.isRunning) {
             delay(50)
@@ -100,6 +107,7 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
+        // --- Верхняя часть: поле + панель ---
         Row(
             modifier = Modifier
                 .weight(0.75f)
@@ -115,6 +123,8 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                     StartButton(onClick = {
                         game.reset()
                         isStarted = true
+                        isPaused = false
+                        gameId++
                         refreshUi()
                     })
                 } else {
@@ -128,6 +138,7 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            // Правая панель
             Column(
                 modifier = Modifier
                     .weight(0.3f)
@@ -157,11 +168,28 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                     nextBlocks = state.nextBlocks,
                     colorArgb = state.nextColorArgb
                 )
+
+                // Кнопка паузы
+                if (isStarted && state.isRunning && !isPaused) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = { isPaused = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ButtonColor,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("II", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // --- Нижняя часть: кнопки управления ---
         Box(
             modifier = Modifier
                 .weight(0.25f)
@@ -172,16 +200,28 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row {
-                    ActionButton("←", enabled = isStarted) {
+                    ActionButton(
+                        iconRes = R.drawable.ic_right_arrow,
+                        rotationDeg = 180f,
+                        enabled = isStarted && !isPaused
+                    ) {
                         game.handleInput(PlayerAction.MOVE_LEFT); refreshUi()
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    ActionButton("→", enabled = isStarted) {
+                    ActionButton(
+                        iconRes = R.drawable.ic_right_arrow,
+                        rotationDeg = 0f,
+                        enabled = isStarted && !isPaused
+                    ) {
                         game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi()
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                ActionButton("↓", enabled = isStarted) {
+                ActionButton(
+                    iconRes = R.drawable.ic_right_arrow,
+                    rotationDeg = 90f,
+                    enabled = isStarted && !isPaused
+                ) {
                     game.handleInput(PlayerAction.MOVE_DOWN); refreshUi()
                 }
             }
@@ -191,20 +231,23 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 SimpleButton(
-                    label = "↻",
-                    enabled = isStarted,
+                    iconRes = R.drawable.rotate_arrow,
+                    rotationDeg = 0f,
+                    enabled = isStarted && !isPaused,
                     onPress = { game.handleInput(PlayerAction.ROTATE); refreshUi() }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 SimpleButton(
-                    label = "⤓",
-                    enabled = isStarted,
+                    iconRes = R.drawable.hd_arrow,
+                    rotationDeg = 90f,
+                    enabled = isStarted && !isPaused,
                     onPress = { game.handleInput(PlayerAction.HARD_DROP); refreshUi() }
                 )
             }
         }
     }
 
+    // Game Over
     if (isStarted && !state.isRunning) {
         GameOverDialog(
             score = state.score,
@@ -213,11 +256,31 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
             bestLevel = bestLevel,
             onRestart = {
                 game.reset()
+                isPaused = false
+                gameId++
+                refreshUi()
+            }
+        )
+    }
+
+    // Pause
+    if (isPaused) {
+        PauseDialog(
+            bestScore = bestScore,
+            bestLevel = bestLevel,
+            currentScore = state.score,
+            currentLevel = state.level,
+            onResume = { isPaused = false },
+            onRestart = {
+                game.reset()
+                isPaused = false
+                gameId++
                 refreshUi()
             }
         )
     }
 }
+
 @Composable
 fun StartButton(onClick: () -> Unit) {
     Button(
@@ -231,12 +294,87 @@ fun StartButton(onClick: () -> Unit) {
             .fillMaxWidth(0.8f)
             .height(64.dp)
     ) {
-        Text(
-            text = "Начать игру",
-            style = MaterialTheme.typography.titleLarge
-        )
+        Text("Начать игру", style = MaterialTheme.typography.titleLarge)
     }
 }
+
+@Composable
+fun PauseDialog(
+    bestScore: Int,
+    bestLevel: Int,
+    currentScore: Int,
+    currentLevel: Int,
+    onResume: () -> Unit,
+    onRestart: () -> Unit
+) {
+    Dialog(onDismissRequest = onResume) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .background(Color(0xFF1B263B), RoundedCornerShape(16.dp))
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("ПАУЗА", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    "Текущий счёт: $currentScore",
+                    color = Color(0xFFE0E0E0),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "Текущий уровень: $currentLevel",
+                    color = Color(0xFFE0E0E0),
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    "Лучший счёт: $bestScore",
+                    color = Color(0xFFFFD700),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "Лучший уровень: $bestLevel",
+                    color = Color(0xFFFFD700),
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onResume,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF415A77),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Продолжить", style = MaterialTheme.typography.titleMedium)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onRestart,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E4A66),
+                        contentColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Заново", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun GameOverDialog(
     score: Int,
@@ -254,52 +392,24 @@ fun GameOverDialog(
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "GAME OVER",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineMedium
-                )
+                Text("GAME OVER", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Счёт: $score",
-                    color = Color(0xFFE0E0E0),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "Уровень: $level",
-                    color = Color(0xFFE0E0E0),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Text("Счёт: $score", color = Color(0xFFE0E0E0), style = MaterialTheme.typography.titleMedium)
+                Text("Уровень: $level", color = Color(0xFFE0E0E0), style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (score >= bestScore && score > 0) {
-                    Text(
-                        text = "🏆 Новый рекорд по очкам!",
-                        color = Color(0xFFFFD700),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Text("Новый рекорд по очкам!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Text(
-                        text = "Лучший счёт: $bestScore",
-                        color = Color(0xFF778DA9),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Text("Лучший счёт: $bestScore", color = Color(0xFF778DA9), style = MaterialTheme.typography.titleMedium)
                 }
 
                 if (level >= bestLevel && level > 1) {
-                    Text(
-                        text = "⭐ Новый рекорд по уровню!",
-                        color = Color(0xFFFFD700),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Text("Новый рекорд по уровню!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Text(
-                        text = "Лучший уровень: $bestLevel",
-                        color = Color(0xFF778DA9),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Text("Лучший уровень: $bestLevel", color = Color(0xFF778DA9), style = MaterialTheme.typography.titleMedium)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -311,9 +421,7 @@ fun GameOverDialog(
                         contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
                     Text("Начать заново", style = MaterialTheme.typography.titleMedium)
                 }
@@ -324,8 +432,9 @@ fun GameOverDialog(
 
 @Composable
 fun ActionButton(
-    label: String,
+    iconRes: Int,
     enabled: Boolean = true,
+    rotationDeg: Float = 0f,
     onPress: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -337,11 +446,11 @@ fun ActionButton(
         isPressed -> ButtonPressedColor
         else -> ButtonColor
     }
-    val textColor = if (enabled) Color.White else Color(0xFF555555)
+    val iconColor = if (enabled) Color.White else Color(0xFF555555)
 
     Box(
         modifier = Modifier
-            .width(78.dp)
+            .width(84.dp)
             .height(72.dp)
             .background(bg, RoundedCornerShape(16.dp))
             .pointerInput(enabled) {
@@ -366,14 +475,22 @@ fun ActionButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = textColor, style = MaterialTheme.typography.headlineMedium)
+        Icon(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier
+                .size(32.dp)
+                .rotate(rotationDeg)
+        )
     }
 }
 
 @Composable
 fun SimpleButton(
-    label: String,
+    iconRes: Int,
     enabled: Boolean = true,
+    rotationDeg: Float = 0f,
     onPress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -384,11 +501,11 @@ fun SimpleButton(
         isPressed -> ButtonPressedColor
         else -> ButtonColor
     }
-    val textColor = if (enabled) Color.White else Color(0xFF555555)
+    val iconColor = if (enabled) Color.White else Color(0xFF555555)
 
     Box(
         modifier = modifier
-            .width(78.dp)
+            .width(84.dp)
             .height(72.dp)
             .background(bg, RoundedCornerShape(16.dp))
             .pointerInput(enabled) {
@@ -405,6 +522,13 @@ fun SimpleButton(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = textColor, style = MaterialTheme.typography.headlineMedium)
+        Icon(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier
+                .size(32.dp)
+                .rotate(rotationDeg)
+        )
     }
 }
