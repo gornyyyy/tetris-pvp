@@ -1,7 +1,6 @@
 package com.example.tetrisandroid.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
@@ -13,12 +12,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.tetrisandroid.data.BestScoreStorage
 import com.example.tetrisandroid.game.Game
 import com.example.tetrisandroid.model.PlayerAction
 import kotlinx.coroutines.Job
@@ -41,8 +39,12 @@ data class UiState(
 )
 
 @Composable
-fun TetrisScreen() {
+fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
     val game = remember { Game(onUpdate = {}, onGameOver = {}) }
+
+    var bestScore by remember { mutableStateOf(bestScoreStorage.getBestScore()) }
+    var bestLevel by remember { mutableStateOf(bestScoreStorage.getBestLevel()) }
+    var isStarted by remember { mutableStateOf(false) }
 
     var uiState by remember {
         mutableStateOf(
@@ -70,9 +72,15 @@ fun TetrisScreen() {
             level = game.level,
             isRunning = game.isRunning
         )
+        if (!game.isRunning) {
+            bestScoreStorage.saveResults(game.score, game.level)
+            bestScore = bestScoreStorage.getBestScore()
+            bestLevel = bestScoreStorage.getBestLevel()
+        }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isStarted) {
+        if (!isStarted) return@LaunchedEffect
         refreshUi()
         while (game.isRunning) {
             delay(50)
@@ -100,13 +108,22 @@ fun TetrisScreen() {
             Box(
                 modifier = Modifier
                     .weight(0.7f)
-                    .fillMaxHeight()
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
             ) {
-                TetrisBoardCanvas(
-                    grid = state.grid,
-                    activeBlocks = state.activeBlocks,
-                    activeColorArgb = state.activeColorArgb
-                )
+                if (!isStarted) {
+                    StartButton(onClick = {
+                        game.reset()
+                        isStarted = true
+                        refreshUi()
+                    })
+                } else {
+                    TetrisBoardCanvas(
+                        grid = state.grid,
+                        activeBlocks = state.activeBlocks,
+                        activeColorArgb = state.activeColorArgb
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -120,9 +137,19 @@ fun TetrisScreen() {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text("SCORE", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
                 Text("${state.score}", color = Color.White, style = MaterialTheme.typography.titleLarge)
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("BEST", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("$bestScore", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("lvl $bestLevel", color = Color(0xFF778DA9), style = MaterialTheme.typography.bodySmall)
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("LEVEL", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
                 Text("${state.level}", color = Color.White, style = MaterialTheme.typography.titleLarge)
+
                 Spacer(modifier = Modifier.height(20.dp))
                 Text("NEXT", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(6.dp))
@@ -145,26 +172,45 @@ fun TetrisScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row {
-                    ActionButton("←") { game.handleInput(PlayerAction.MOVE_LEFT); refreshUi() }
+                    ActionButton("←", enabled = isStarted) {
+                        game.handleInput(PlayerAction.MOVE_LEFT); refreshUi()
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    ActionButton("→") { game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi() }
+                    ActionButton("→", enabled = isStarted) {
+                        game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi()
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                ActionButton("↓") { game.handleInput(PlayerAction.MOVE_DOWN); refreshUi() }
+                ActionButton("↓", enabled = isStarted) {
+                    game.handleInput(PlayerAction.MOVE_DOWN); refreshUi()
+                }
             }
 
-            SimpleButton(
-                label = "↻",
-                onPress = { game.handleInput(PlayerAction.ROTATE); refreshUi() },
-                modifier = Modifier.align(Alignment.CenterEnd)
-            )
+            Column(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                SimpleButton(
+                    label = "↻",
+                    enabled = isStarted,
+                    onPress = { game.handleInput(PlayerAction.ROTATE); refreshUi() }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SimpleButton(
+                    label = "⤓",
+                    enabled = isStarted,
+                    onPress = { game.handleInput(PlayerAction.HARD_DROP); refreshUi() }
+                )
+            }
         }
     }
 
-    if (!state.isRunning) {
+    if (isStarted && !state.isRunning) {
         GameOverDialog(
             score = state.score,
+            bestScore = bestScore,
             level = state.level,
+            bestLevel = bestLevel,
             onRestart = {
                 game.reset()
                 refreshUi()
@@ -172,10 +218,34 @@ fun TetrisScreen() {
         )
     }
 }
-
 @Composable
-fun GameOverDialog(score: Int, level: Int, onRestart: () -> Unit) {
-    Dialog(onDismissRequest = { /* нельзя закрыть */ }) {
+fun StartButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF2E4A66),
+            contentColor = Color(0xFFE0E0E0)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth(0.8f)
+            .height(64.dp)
+    ) {
+        Text(
+            text = "Начать игру",
+            style = MaterialTheme.typography.titleLarge
+        )
+    }
+}
+@Composable
+fun GameOverDialog(
+    score: Int,
+    bestScore: Int,
+    level: Int,
+    bestLevel: Int,
+    onRestart: () -> Unit
+) {
+    Dialog(onDismissRequest = { }) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -183,15 +253,14 @@ fun GameOverDialog(score: Int, level: Int, onRestart: () -> Unit) {
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "GAME OVER",
                     color = Color.White,
                     style = MaterialTheme.typography.headlineMedium
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
                     text = "Счёт: $score",
                     color = Color(0xFFE0E0E0),
@@ -202,7 +271,39 @@ fun GameOverDialog(score: Int, level: Int, onRestart: () -> Unit) {
                     color = Color(0xFFE0E0E0),
                     style = MaterialTheme.typography.titleMedium
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (score >= bestScore && score > 0) {
+                    Text(
+                        text = "🏆 Новый рекорд по очкам!",
+                        color = Color(0xFFFFD700),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                } else {
+                    Text(
+                        text = "Лучший счёт: $bestScore",
+                        color = Color(0xFF778DA9),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                if (level >= bestLevel && level > 1) {
+                    Text(
+                        text = "⭐ Новый рекорд по уровню!",
+                        color = Color(0xFFFFD700),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                } else {
+                    Text(
+                        text = "Лучший уровень: $bestLevel",
+                        color = Color(0xFF778DA9),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
+
                 Button(
                     onClick = onRestart,
                     colors = ButtonDefaults.buttonColors(
@@ -222,20 +323,29 @@ fun GameOverDialog(score: Int, level: Int, onRestart: () -> Unit) {
 }
 
 @Composable
-fun ActionButton(label: String, onPress: () -> Unit) {
+fun ActionButton(
+    label: String,
+    enabled: Boolean = true,
+    onPress: () -> Unit
+) {
     var isPressed by remember { mutableStateOf(false) }
     var pressJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
+
+    val bg = when {
+        !enabled -> Color(0xFF1A2634)
+        isPressed -> ButtonPressedColor
+        else -> ButtonColor
+    }
+    val textColor = if (enabled) Color.White else Color(0xFF555555)
 
     Box(
         modifier = Modifier
             .width(78.dp)
             .height(72.dp)
-            .background(
-                if (isPressed) ButtonPressedColor else ButtonColor,
-                RoundedCornerShape(16.dp)
-            )
-            .pointerInput(Unit) {
+            .background(bg, RoundedCornerShape(16.dp))
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         awaitFirstDown()
@@ -256,22 +366,33 @@ fun ActionButton(label: String, onPress: () -> Unit) {
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = Color.White, style = MaterialTheme.typography.headlineMedium)
+        Text(label, color = textColor, style = MaterialTheme.typography.headlineMedium)
     }
 }
 
 @Composable
-fun SimpleButton(label: String, onPress: () -> Unit, modifier: Modifier = Modifier) {
+fun SimpleButton(
+    label: String,
+    enabled: Boolean = true,
+    onPress: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var isPressed by remember { mutableStateOf(false) }
+
+    val bg = when {
+        !enabled -> Color(0xFF1A2634)
+        isPressed -> ButtonPressedColor
+        else -> ButtonColor
+    }
+    val textColor = if (enabled) Color.White else Color(0xFF555555)
+
     Box(
         modifier = modifier
             .width(78.dp)
             .height(72.dp)
-            .background(
-                if (isPressed) ButtonPressedColor else ButtonColor,
-                RoundedCornerShape(16.dp)
-            )
-            .pointerInput(Unit) {
+            .background(bg, RoundedCornerShape(16.dp))
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         awaitFirstDown()
@@ -284,7 +405,6 @@ fun SimpleButton(label: String, onPress: () -> Unit, modifier: Modifier = Modifi
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = Color.White, style = MaterialTheme.typography.headlineMedium)
+        Text(label, color = textColor, style = MaterialTheme.typography.headlineMedium)
     }
 }
-

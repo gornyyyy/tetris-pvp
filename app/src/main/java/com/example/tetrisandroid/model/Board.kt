@@ -19,7 +19,6 @@ class Board {
     fun isValidPosition(shape: Shape): Boolean {
         for (block in shape.getBlocks()) {
             if (block.x < 0 || block.x >= WIDTH) return false
-
             if (block.y >= TOTAL_HEIGHT) return false
             if (block.y >= 0 && grid[block.y][block.x] != 0) return false
         }
@@ -28,37 +27,59 @@ class Board {
 
     fun tryMove(shape: Shape, dx: Int, dy: Int): Boolean {
         shape.move(dx, dy)
-        if (isValidPosition(shape)) {
-            return true
-        }
+        if (isValidPosition(shape)) return true
         shape.move(-dx, -dy)
         return false
     }
 
+    fun canMove(shape: Shape, dx: Int, dy: Int): Boolean {
+        val oldX = shape.x
+        val oldY = shape.y
+        shape.x += dx
+        shape.y += dy
+        val valid = isValidPosition(shape)
+        shape.x = oldX
+        shape.y = oldY
+        return valid
+    }
 
     fun tryRotate(shape: Shape): Boolean {
+        val fromRotation = shape.rotationIndex
+        val toRotation = (fromRotation + 1) % 4
+
         val backupMatrix = Array(shape.matrix.size) { r -> shape.matrix[r].clone() }
+        val backupX = shape.x
+        val backupY = shape.y
+        val backupRotation = shape.rotationIndex
 
         shape.rotate()
 
-        if (isValidPosition(shape)) {
-            return true
-        } else {
-            shape.matrix = backupMatrix
-            return false
+        for ((dx, dy) in shape.getKickOffsets(fromRotation, toRotation)) {
+            shape.x = backupX + dx
+            shape.y = backupY + dy
+            if (isValidPosition(shape)) return true
         }
+
+        shape.matrix = backupMatrix
+        shape.x = backupX
+        shape.y = backupY
+        shape.rotationIndex = backupRotation
+        return false
     }
 
-    fun lockPiece(shape: Shape) {
+    fun lockPiece(shape: Shape): Boolean {
+        var overflow = false
         for (block in shape.getBlocks()) {
             if (block.y >= 0 && block.y < TOTAL_HEIGHT && block.x >= 0 && block.x < WIDTH) {
                 grid[block.y][block.x] = 2
+                if (block.y < HIDDEN_ROWS) overflow = true
             }
         }
+        return overflow
     }
 
     fun spawnShape(): Shape {
-        val shape = when ((0..6).random()) {
+        return when ((0..6).random()) {
             0 -> ShapeI(3, 0)
             1 -> ShapeO(4, 0)
             2 -> ShapeT(3, 0)
@@ -67,7 +88,14 @@ class Board {
             5 -> ShapeJ(3, 0)
             else -> ShapeL(3, 0)
         }
-        return shape
+    }
+
+    fun revealShape(shape: Shape) {
+        val matrixHeight = shape.matrix.size
+        val targetY = HIDDEN_ROWS - matrixHeight + 1
+        if (shape.y < targetY) {
+            shape.y = targetY
+        }
     }
 
     fun clearFullLines(): Int {
@@ -75,7 +103,6 @@ class Board {
 
         for (r in TOTAL_HEIGHT - 2 downTo 0) {
             val isFull = grid[r].all { it != 0 }
-
             if (isFull) {
                 linesCleared++
                 for (row in r downTo 1) {
@@ -87,5 +114,4 @@ class Board {
 
         return linesCleared
     }
-
 }

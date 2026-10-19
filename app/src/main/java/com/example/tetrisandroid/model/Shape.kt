@@ -1,11 +1,15 @@
 package com.example.tetrisandroid.model
 
+data class Point(val x: Int, val y: Int)
+
 abstract class Shape(
     var x: Int, var y: Int
 ) {
     abstract val colorArgb: Int
-
     var matrix: Array<IntArray> = emptyArray()
+
+    var rotationIndex: Int = 0
+        internal set
 
     abstract fun rotate()
 
@@ -16,7 +20,6 @@ abstract class Shape(
 
     fun moveLeft() = move(-1, 0)
     fun moveRight() = move(1, 0)
-
     open fun moveDown() = move(0, 1)
 
     protected fun rotateMatrixClockwise() {
@@ -40,6 +43,20 @@ abstract class Shape(
         }
         return blocks
     }
-}
 
-data class Point(val x: Int, val y: Int)
+    open fun getKickOffsets(fromRotation: Int, toRotation: Int): List<Pair<Int, Int>> {
+
+        val table = when (fromRotation to toRotation) {
+            0 to 1 -> listOf(0 to 0, -1 to 0, -1 to 1, 0 to -2, -1 to -2)
+            1 to 0 -> listOf(0 to 0, 1 to 0, 1 to -1, 0 to 2, 1 to 2)
+            1 to 2 -> listOf(0 to 0, 1 to 0, 1 to -1, 0 to 2, 1 to 2)
+            2 to 1 -> listOf(0 to 0, -1 to 0, -1 to 1, 0 to -2, -1 to -2)
+            2 to 3 -> listOf(0 to 0, 1 to 0, 1 to 1, 0 to -2, 1 to -2)
+            3 to 2 -> listOf(0 to 0, -1 to 0, -1 to -1, 0 to 2, -1 to 2)
+            3 to 0 -> listOf(0 to 0, -1 to 0, -1 to -1, 0 to 2, -1 to 2)
+            0 to 3 -> listOf(0 to 0, 1 to 0, 1 to 1, 0 to -2, 1 to -2)
+            else -> listOf(0 to 0)
+        }
+        return table
+    }
+}

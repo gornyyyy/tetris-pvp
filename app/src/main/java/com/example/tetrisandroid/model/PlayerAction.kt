@@ -5,5 +5,6 @@ enum class PlayerAction {
     MOVE_RIGHT,
     MOVE_DOWN,
     ROTATE,
+    HARD_DROP,
     QUIT
 }
