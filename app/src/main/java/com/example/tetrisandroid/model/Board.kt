@@ -99,19 +99,28 @@ class Board {
     }
 
     fun clearFullLines(): Int {
-        var linesCleared = 0
+        val remainingRows = mutableListOf<IntArray>()
+        var cleared = 0
 
-        for (r in TOTAL_HEIGHT - 2 downTo 0) {
+        for (r in 0 until TOTAL_HEIGHT - 1) {
             val isFull = grid[r].all { it != 0 }
             if (isFull) {
-                linesCleared++
-                for (row in r downTo 1) {
-                    grid[row] = grid[row - 1].clone()
-                }
-                grid[0] = IntArray(WIDTH)
+                cleared++
+            } else {
+                remainingRows.add(grid[r].clone())
             }
         }
 
-        return linesCleared
+        if (cleared == 0) return 0
+
+        val emptyCount = TOTAL_HEIGHT - 1 - remainingRows.size
+        for (r in 0 until emptyCount) {
+            grid[r] = IntArray(WIDTH)
+        }
+        for (i in remainingRows.indices) {
+            grid[emptyCount + i] = remainingRows[i]
+        }
+
+        return cleared
     }
 }
