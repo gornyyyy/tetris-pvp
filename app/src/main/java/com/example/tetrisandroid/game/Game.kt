@@ -23,7 +23,7 @@ class Game(
     @Volatile var isRunning = true
         private set
 
-    var fallDelay = BASE_FALL_DELAY
+    var fallDelay = calculateFallDelay(1)
         private set
 
     // --- Lock Delay ---
@@ -95,18 +95,15 @@ class Game(
         }
 
         if (moved) {
-            // После любого успешного действия проверяем: фигура снова в воздухе?
             val canFall = board.canMove(currentShape, 0, 1)
             if (canFall) {
-                // Отменяем lock — фигура падает
+                // Отменяем lock - фигура падает
                 isLocking = false
                 lockResets = 0
             } else if (isLocking) {
-                // Фигура на земле и уже была в lock — увеличиваем счётчик
                 lockResets++
                 lockTimer = System.currentTimeMillis()
             } else {
-                // Фигура только что коснулась земли — включаем lock
                 isLocking = true
                 lockTimer = System.currentTimeMillis()
                 lockResets = 1
@@ -143,22 +140,24 @@ class Game(
 
         // Уровень каждые 10 линий
         level = (linesClearedTotal / 10) + 1
-        // Скорость: каждый уровень на 25% быстрее (×0.75)
-        fallDelay = (BASE_FALL_DELAY * 0.75.pow(level - 1))
-            .toLong()
-            .coerceAtLeast(MIN_FALL_DELAY)
+        fallDelay = calculateFallDelay(level)
 
         currentShape = nextShape
         nextShape = board.spawnShape()
 
         board.revealShape(currentShape)
-        board.revealShape(nextShape)
+
+        if (!board.isValidPosition(currentShape)) {
+            isRunning = false
+            onGameOver(score)
+            return
+        }
 
         isLocking = false
         lockTimer = 0L
         lockResets = 0
 
-        if (overflow || !board.isValidPosition(currentShape)) {
+        if (overflow || !board.canShapeMoveAnywhere(currentShape)) {
             isRunning = false
             onGameOver(score)
         }
@@ -182,7 +181,7 @@ class Game(
         score = 0
         level = 1
         isRunning = true
-        fallDelay = BASE_FALL_DELAY
+        fallDelay = calculateFallDelay(1)
         isLocking = false
         lockTimer = 0L
         lockResets = 0
@@ -192,8 +191,26 @@ class Game(
         onUpdate()
     }
 
+    private fun calculateFallDelay(level: Int): Long {
+        val lvl = level.coerceAtLeast(1)
+        val millis: Double = when {
+            lvl <= 9 -> {
+                600.0 - (lvl - 1) * 50.0
+            }
+            lvl <= 16 -> {
+                200.0 * 0.7937.pow(lvl - 10)
+            }
+            lvl <= 19 -> {
+                50.0
+            }
+            else -> {
+                50.0 - (lvl - 20) * (34.0 / 9.0)
+            }
+        }
+        return millis.toLong().coerceAtLeast(MIN_FALL_DELAY)
+    }
+
     companion object {
-        private const val BASE_FALL_DELAY = 500L
-        private const val MIN_FALL_DELAY = 50L
+        private const val MIN_FALL_DELAY = 16L
     }
 }

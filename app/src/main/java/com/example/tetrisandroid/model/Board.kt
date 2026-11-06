@@ -91,19 +91,30 @@ class Board {
     }
 
     fun revealShape(shape: Shape) {
+        if (!isValidPosition(shape)) return
+
         val blocks = shape.getBlocks()
         if (blocks.isEmpty()) return
+
         val lowestY = blocks.maxOf { it.y }
         val shift = HIDDEN_ROWS - lowestY
-        if (shift > 0) {
-            repeat(shift) {
-                shape.y += 1
-                if (!isValidPosition(shape)) {
-                    shape.y -= 1
-                    return
-                }
-            }
+        if (shift <= 0) return
+
+        val originalY = shape.y
+        shape.y = originalY + shift
+
+        if (isValidPosition(shape)) {
+            return
         }
+
+        // столкновение — откатываем полностью
+        shape.y = originalY
+    }
+
+    fun canShapeMoveAnywhere(shape: Shape): Boolean {
+        return canMove(shape, 0, 1) ||
+                canMove(shape, -1, 0) ||
+                canMove(shape, 1, 0)
     }
 
     fun clearFullLines(): Int {

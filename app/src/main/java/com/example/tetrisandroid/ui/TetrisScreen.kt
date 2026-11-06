@@ -115,7 +115,7 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage, gameSettings: GameSettings)
         if (!isStarted || isPaused) return@LaunchedEffect
         refreshUi()
         while (game.isRunning) {
-            delay(50)
+            delay(16)
             game.tick()
             refreshUi()
         }
@@ -452,7 +452,7 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Подсветка колонки (ах ты ыказуальщик))", color = txt, style = MaterialTheme.typography.titleMedium)
+                    Text("Подсветка колонки\n(ах ты казуальщик))", color = txt, style = MaterialTheme.typography.titleMedium)
                     Switch(checked = highlightColumn, onCheckedChange = onHighlightChange)
                 }
 
@@ -468,57 +468,6 @@ fun SettingsDialog(
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
                     Text("Закрыть", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ConfirmLeavePauseDialog(isLightTheme: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
-    val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
-
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .background(bg, RoundedCornerShape(16.dp))
-                .padding(24.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Перейти в настройки?", color = txt, style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "Игра останется на паузе. Вы сможете вернуться к ней после закрытия настроек.",
-                    color = txt,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF2E4A66),
-                            contentColor = txt
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(48.dp)
-                    ) {
-                        Text("Отмена", style = MaterialTheme.typography.titleMedium)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = onConfirm,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF8B3A3A),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(48.dp)
-                    ) {
-                        Text("Да", style = MaterialTheme.typography.titleMedium)
-                    }
                 }
             }
         }
@@ -556,7 +505,7 @@ fun PauseDialog(
                 Text("Счёт: ${formatScore(currentScore)}", color = txt, style = MaterialTheme.typography.titleMedium)
                 Text("Уровень: $currentLevel", color = txt, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Лучший счёт: ${formatScore(bestScore)}", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                Text("Лучший счёт: $bestScore", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 Text("Лучший уровень: $bestLevel", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -637,7 +586,7 @@ fun GameOverDialog(
                 if (score >= bestScore && score > 0) {
                     Text("Новый рекорд по очкам!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Text("Лучший счёт: ${formatScore(bestScore)}", color = muted, style = MaterialTheme.typography.titleMedium)
+                    Text("Лучший счёт: $bestScore", color = muted, style = MaterialTheme.typography.titleMedium)
                 }
 
                 if (level >= bestLevel && level > 1) {

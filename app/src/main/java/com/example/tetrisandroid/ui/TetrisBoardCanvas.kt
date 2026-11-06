@@ -19,20 +19,11 @@ fun TetrisBoardCanvas(
     isLightTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val emptyColor = if (isLightTheme) Color(0xFFF3F6FB) else Color(0xFF0D1B2A)
     val gridLineColor = if (isLightTheme) Color(0xFFE0E6EF) else Color(0xFF152238)
-
-    // В светлой теме все падающие фигуры — чёрные
     val activeColor = if (isLightTheme) Color.Black else Color(activeColorArgb)
-
     val lockedColor = if (isLightTheme) Color(0xFF8A8A8A) else Color(0xFF808080)
     val wallColor = if (isLightTheme) Color(0xFFB0B8C4) else Color(0xFF1A2A44)
-
-    // Линии по краям
-    val edgeLineColor = if (isLightTheme)
-        Color(0xFFB8B8B8)
-    else
-        Color(0xFFA0A0A0)
+    val edgeLineColor = if (isLightTheme) Color(0xFFB8B8B8) else Color(0xFFA0A0A0)
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val cellWidth = size.width / 10f
@@ -42,36 +33,7 @@ fun TetrisBoardCanvas(
         val offsetX = (size.width - cellSize * 10) / 2f
         val offsetY = (size.height - cellSize * visibleRows) / 2f
 
-        // 1) Линии по краям фигуры
-        if (highlightColumn && activeBlocks.isNotEmpty()) {
-            val minCol = activeBlocks.minOf { it.first }
-            val maxCol = activeBlocks.maxOf { it.first }
-
-            val top = offsetY
-            val height = cellSize * visibleRows
-            val leftX = offsetX + minCol * cellSize
-            val rightX = offsetX + (maxCol + 1) * cellSize
-
-            // Линия слева от фигуры
-            drawLine(
-                color = edgeLineColor,
-                start = Offset(leftX, top),
-                end = Offset(leftX, top + height),
-                strokeWidth = 2.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-
-            // Линия справа от фигуры
-            drawLine(
-                color = edgeLineColor,
-                start = Offset(rightX, top),
-                end = Offset(rightX, top + height),
-                strokeWidth = 2.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
-
-        // 2) Сетка и блоки
+        // 1) Сетка и блоки
         for (r in 4 until 24) {
             for (c in 0 until 10) {
                 val isActive = activeBlocks.any { it.first == c && it.second == r }
@@ -94,6 +56,37 @@ fun TetrisBoardCanvas(
                     3 -> drawRect(wallColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
                     else -> Unit
                 }
+            }
+        }
+
+        // 2) Линии подсветки - после сетки и блоков
+        if (highlightColumn && activeBlocks.isNotEmpty()) {
+            val minCol = activeBlocks.minOf { it.first }
+            val maxCol = activeBlocks.maxOf { it.first }
+
+            val top = offsetY
+            val bottom = offsetY + (visibleRows - 1) * cellSize
+            val height = bottom - top
+
+            if (height > 0) {
+                val leftX = offsetX + minCol * cellSize
+                val rightX = offsetX + (maxCol + 1) * cellSize
+                val strokeWidth = 2.dp.toPx()
+
+                drawLine(
+                    color = edgeLineColor,
+                    start = Offset(leftX, top),
+                    end = Offset(leftX, top + height),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = edgeLineColor,
+                    start = Offset(rightX, top),
+                    end = Offset(rightX, top + height),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
             }
         }
     }
