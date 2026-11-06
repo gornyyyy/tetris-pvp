@@ -83,10 +83,14 @@ class Game(
             PlayerAction.MOVE_RIGHT -> moved = board.tryMove(currentShape, 1, 0)
             PlayerAction.MOVE_DOWN  -> {
                 if (board.tryMove(currentShape, 0, 1)) {
-                    // Фигура упала — сбрасываем lock полностью
+                    // Фигура упала - сбрасываем lock полностью
                     isLocking = false
                     lockResets = 0
                     moved = true
+                } else {
+                    lockAndSpawn()
+                    onUpdate()
+                    return
                 }
             }
             PlayerAction.ROTATE     -> moved = board.tryRotate(currentShape)

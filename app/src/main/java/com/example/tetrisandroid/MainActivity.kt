@@ -14,11 +14,25 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val storage = BestScoreStorage(applicationContext)
+
+        storage.saveCurrentVersionIfFirstRun()
+
+        val versionChanged = storage.isVersionChanged()
+        val oldRecords = if (versionChanged) storage.getOldRecords() else null
+
         setContent {
             TetrisAndroidTheme {
-                val scoreStorage = remember { BestScoreStorage(applicationContext) }
                 val gameSettings = remember { GameSettings(applicationContext) }
-                TetrisScreen(bestScoreStorage = scoreStorage, gameSettings = gameSettings)
+                TetrisScreen(
+                    bestScoreStorage = storage,
+                    gameSettings = gameSettings,
+                    oldRecordsOnUpdate = oldRecords,
+                    onUpdateDialogClose = {
+                        storage.resetRecordsAndSaveVersion()
+                    }
+                )
             }
         }
     }

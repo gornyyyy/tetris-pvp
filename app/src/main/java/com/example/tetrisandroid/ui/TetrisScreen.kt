@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -57,7 +58,12 @@ data class UiState(
 )
 
 @Composable
-fun TetrisScreen(bestScoreStorage: BestScoreStorage, gameSettings: GameSettings) {
+fun TetrisScreen(
+    bestScoreStorage: BestScoreStorage,
+    gameSettings: GameSettings,
+    oldRecordsOnUpdate: BestScoreStorage.OldRecords? = null,
+    onUpdateDialogClose: () -> Unit = {}
+) {
     val game = remember { Game(onUpdate = {}, onGameOver = {}) }
 
     var bestScore by remember { mutableStateOf(bestScoreStorage.getBestScore()) }
@@ -70,6 +76,8 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage, gameSettings: GameSettings)
 
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
+
+    var showUpdateDialog by remember { mutableStateOf(oldRecordsOnUpdate != null) }
 
     // Палитра
     val background = if (isLightTheme) LightBackground else DarkBackground
@@ -364,6 +372,19 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage, gameSettings: GameSettings)
             }
         )
     }
+
+    if (showUpdateDialog && oldRecordsOnUpdate != null) {
+        UpdateDialog(
+            oldRecords = oldRecordsOnUpdate,
+            isLightTheme = isLightTheme,
+            onClose = {
+                showUpdateDialog = false
+                onUpdateDialogClose()
+                bestScore = 0
+                bestLevel = 1
+            }
+        )
+    }
 }
 
 // ---------- Форматирование числа ----------
@@ -487,9 +508,10 @@ fun PauseDialog(
 ) {
     val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
     val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
-    val muted = if (isLightTheme) Color(0xFF5A6B7B) else Color(0xFF778DA9)
-    val settingsBg = if (isLightTheme) Color(0xFFE8EEF5) else Color(0xFF2E3F57)
-    val settingsTxt = if (isLightTheme) Color(0xFF1A1A1A) else Color(0xFFB0B0B0)
+
+    // Цвет кнопок — одинаковый для всех трёх
+    val btnBg = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF2E4A66)
+    val btnTxt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
 
     Dialog(onDismissRequest = onResume) {
         Box(
@@ -505,16 +527,17 @@ fun PauseDialog(
                 Text("Счёт: ${formatScore(currentScore)}", color = txt, style = MaterialTheme.typography.titleMedium)
                 Text("Уровень: $currentLevel", color = txt, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Лучший счёт: $bestScore", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                Text("Лучший счёт: ${formatScore(bestScore)}", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 Text("Лучший уровень: $bestLevel", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Продолжить
                 Button(
                     onClick = onResume,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isLightTheme) Color(0xFFB0C4D8) else Color(0xFF415A77),
-                        contentColor = txt
+                        containerColor = btnBg,
+                        contentColor = btnTxt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -524,11 +547,12 @@ fun PauseDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Настройки — тот же цвет
                 Button(
                     onClick = onSettings,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = settingsBg,
-                        contentColor = settingsTxt
+                        containerColor = btnBg,
+                        contentColor = btnTxt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -541,8 +565,8 @@ fun PauseDialog(
                 Button(
                     onClick = onRestart,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF2E4A66),
-                        contentColor = txt
+                        containerColor = btnBg,
+                        contentColor = btnTxt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -730,5 +754,77 @@ fun SimpleButton(
             tint = iconColor,
             modifier = Modifier.size(32.dp).rotate(rotationDeg)
         )
+    }
+}
+
+@Composable
+fun UpdateDialog(
+    oldRecords: BestScoreStorage.OldRecords,
+    isLightTheme: Boolean,
+    onClose: () -> Unit
+) {
+    val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
+    val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
+    val muted = if (isLightTheme) Color(0xFF5A6B7B) else Color(0xFF778DA9)
+
+    Dialog(onDismissRequest = onClose) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .background(bg, RoundedCornerShape(16.dp))
+                .padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Обновление!",
+                    color = txt,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "А вот и новое обновление, однако всякое поменялось и поэтому ваши рекорды больше ничего не значат)\nно если вдруг кто-то гордился ими или что-то в этом роде, то можете сделать скриншотик",
+                    color = txt,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Ваш лучший скор: ${oldRecords.score}",
+                    color = Color(0xFFFFD700),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Ваш лучший лвл: ${oldRecords.level}",
+                    color = Color(0xFFFFD700),
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "А теперь время ставить новые рекорды!",
+                    color = txt,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onClose,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLightTheme) Color(0xFFB0C4D8) else Color(0xFF415A77),
+                        contentColor = txt
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Text("🤟🤟🤟", style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
     }
 }

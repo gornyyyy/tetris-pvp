@@ -1,6 +1,7 @@
 package com.example.tetrisandroid.data
 
 import android.content.Context
+import com.example.tetrisandroid.BuildConfig
 
 class BestScoreStorage(context: Context) {
     private val prefs = context.getSharedPreferences("tetris_prefs", Context.MODE_PRIVATE)
@@ -28,8 +29,50 @@ class BestScoreStorage(context: Context) {
         editor.apply()
     }
 
+    /**
+     * Возвращает true, если версия приложения изменилась (или это первый запуск).
+     * НЕ сбрасывает рекорды — только сообщает, что нужно показать диалог.
+     */
+    fun isVersionChanged(): Boolean {
+        val savedVersion = prefs.getInt(KEY_APP_VERSION, -1)
+        val currentVersion = BuildConfig.VERSION_CODE
+        return savedVersion != currentVersion && savedVersion != -1
+    }
+
+    /**
+     * Возвращает текущие рекорды (для показа в диалоге обновления).
+     */
+    fun getOldRecords(): OldRecords {
+        return OldRecords(getBestScore(), getBestLevel())
+    }
+
+    /**
+     * Сбрасывает рекорды и сохраняет текущую версию.
+     * Вызывается после нажатия кнопки в диалоге обновления.
+     */
+    fun resetRecordsAndSaveVersion() {
+        prefs.edit()
+            .remove(KEY_BEST_SCORE)
+            .remove(KEY_BEST_LEVEL)
+            .putInt(KEY_APP_VERSION, BuildConfig.VERSION_CODE)
+            .apply()
+    }
+
+    /**
+     * Вызывается при первом запуске (или если версия не сохранена),
+     * чтобы просто записать текущую версию без диалога.
+     */
+    fun saveCurrentVersionIfFirstRun() {
+        if (prefs.getInt(KEY_APP_VERSION, -1) == -1) {
+            prefs.edit().putInt(KEY_APP_VERSION, BuildConfig.VERSION_CODE).apply()
+        }
+    }
+
+    data class OldRecords(val score: Int, val level: Int)
+
     companion object {
         private const val KEY_BEST_SCORE = "best_score"
         private const val KEY_BEST_LEVEL = "best_level"
+        private const val KEY_APP_VERSION = "app_version"
     }
 }

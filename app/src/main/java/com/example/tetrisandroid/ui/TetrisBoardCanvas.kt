@@ -7,8 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun TetrisBoardCanvas(
@@ -21,9 +19,33 @@ fun TetrisBoardCanvas(
 ) {
     val gridLineColor = if (isLightTheme) Color(0xFFE0E6EF) else Color(0xFF152238)
     val activeColor = if (isLightTheme) Color.Black else Color(activeColorArgb)
-    val lockedColor = if (isLightTheme) Color(0xFF8A8A8A) else Color(0xFF808080)
+
+    // Упавшие блоки
+    val lockedColor = if (isLightTheme) Color(0xFF808080) else Color(0xFF808080)
+
     val wallColor = if (isLightTheme) Color(0xFFB0B8C4) else Color(0xFF1A2A44)
-    val edgeLineColor = if (isLightTheme) Color(0xFFB8B8B8) else Color(0xFFA0A0A0)
+
+    // Призрак
+    val ghostColor = if (isLightTheme)
+        Color(0xFF000000).copy(alpha = 0.2f)
+    else
+        Color(activeColorArgb).copy(alpha = 0.3f)
+
+    // Вычисляем, куда упадёт фигура
+    val ghostBlocks: List<Pair<Int, Int>> = if (highlightColumn && activeBlocks.isNotEmpty()) {
+        var shift = 0
+        while (true) {
+            val testBlocks = activeBlocks.map { (x, y) -> x to (y + shift + 1) }
+            val canFall = testBlocks.all { (x, y) ->
+                y < grid.size && x in 0 until grid[0].size && grid[y][x] == 0
+            }
+            if (!canFall) break
+            shift++
+        }
+        activeBlocks.map { (x, y) -> x to (y + shift) }
+    } else {
+        emptyList()
+    }
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val cellWidth = size.width / 10f
@@ -59,33 +81,18 @@ fun TetrisBoardCanvas(
             }
         }
 
-        // 2) Линии подсветки - после сетки и блоков
-        if (highlightColumn && activeBlocks.isNotEmpty()) {
-            val minCol = activeBlocks.minOf { it.first }
-            val maxCol = activeBlocks.maxOf { it.first }
-
-            val top = offsetY
-            val bottom = offsetY + (visibleRows - 1) * cellSize
-            val height = bottom - top
-
-            if (height > 0) {
-                val leftX = offsetX + minCol * cellSize
-                val rightX = offsetX + (maxCol + 1) * cellSize
-                val strokeWidth = 2.dp.toPx()
-
-                drawLine(
-                    color = edgeLineColor,
-                    start = Offset(leftX, top),
-                    end = Offset(leftX, top + height),
-                    strokeWidth = strokeWidth,
-                    cap = StrokeCap.Round
+        // 2) Призрак фигуры
+        if (highlightColumn && ghostBlocks.isNotEmpty()) {
+            for ((gx, gy) in ghostBlocks) {
+                if (gy < 4) continue
+                val topLeft = Offset(
+                    x = offsetX + gx * cellSize,
+                    y = offsetY + (gy - 4) * cellSize
                 )
-                drawLine(
-                    color = edgeLineColor,
-                    start = Offset(rightX, top),
-                    end = Offset(rightX, top + height),
-                    strokeWidth = strokeWidth,
-                    cap = StrokeCap.Round
+                drawRect(
+                    color = ghostColor,
+                    topLeft = topLeft,
+                    size = Size(cellSize - 2f, cellSize - 2f)
                 )
             }
         }
