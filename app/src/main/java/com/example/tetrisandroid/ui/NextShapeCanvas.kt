@@ -13,15 +13,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun NextShapeCanvas(nextBlocks: List<Pair<Int, Int>>, colorArgb: Int) {
+fun NextShapeCanvas(nextBlocks: List<Pair<Int, Int>>, colorArgb: Int, isLightTheme: Boolean) {
     val cellSizeDp = 28.dp
     val fixedSize = cellSizeDp * 4 + 24.dp
+    val bg = if (isLightTheme) Color(0xFFF9FBFF) else Color(0xFF0D1B2A)
+    val borderColor = if (isLightTheme) Color(0xFFD0D8E4) else Color(0xFF2A2A2A)
 
     Canvas(
         modifier = Modifier
             .size(fixedSize)
-            .border(1.dp, Color(0xFF2A2A2A), RoundedCornerShape(8.dp))
-            .background(Color(0xFF0D1B2A), RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .background(bg, RoundedCornerShape(8.dp))
     ) {
         if (nextBlocks.isEmpty()) return@Canvas
 

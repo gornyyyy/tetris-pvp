@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.remember
 import com.example.tetrisandroid.data.BestScoreStorage
+import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.ui.TetrisScreen
 import com.example.tetrisandroid.ui.theme.TetrisAndroidTheme
 
@@ -15,8 +16,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TetrisAndroidTheme {
-                val storage = remember { BestScoreStorage(applicationContext) }
-                TetrisScreen(bestScoreStorage = storage)
+                val scoreStorage = remember { BestScoreStorage(applicationContext) }
+                val gameSettings = remember { GameSettings(applicationContext) }
+                TetrisScreen(bestScoreStorage = scoreStorage, gameSettings = gameSettings)
             }
         }
     }

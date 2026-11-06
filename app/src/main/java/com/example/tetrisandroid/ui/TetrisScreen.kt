@@ -9,6 +9,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,15 +24,26 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import com.example.tetrisandroid.R
 import com.example.tetrisandroid.data.BestScoreStorage
+import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.game.Game
 import com.example.tetrisandroid.model.PlayerAction
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
-private val AppBackground = Color(0xFF0D1B2A)
-private val ButtonColor = Color(0xFF1B263B)
-private val ButtonPressedColor = Color(0xFF415A77)
+// ----- Палитры -----
+private val DarkBackground = Color(0xFF0D1B2A)
+private val DarkButton = Color(0xFF1B263B)
+private val DarkButtonPressed = Color(0xFF415A77)
+private val DarkText = Color.White
+private val DarkMuted = Color(0xFF778DA9)
+
+private val LightBackground = Color(0xFFF3F6FB)
+private val LightButton = Color(0xFFDCE3ED)
+private val LightButtonPressed = Color(0xFFB0C4D8)
+private val LightText = Color(0xFF1A1A1A)
+private val LightMuted = Color(0xFF5A6B7B)
 
 data class UiState(
     val grid: Array<IntArray>,
@@ -45,7 +57,7 @@ data class UiState(
 )
 
 @Composable
-fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
+fun TetrisScreen(bestScoreStorage: BestScoreStorage, gameSettings: GameSettings) {
     val game = remember { Game(onUpdate = {}, onGameOver = {}) }
 
     var bestScore by remember { mutableStateOf(bestScoreStorage.getBestScore()) }
@@ -53,6 +65,18 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
     var isStarted by remember { mutableStateOf(false) }
     var isPaused by remember { mutableStateOf(false) }
     var gameId by remember { mutableStateOf(0) }
+
+    var showSettings by remember { mutableStateOf(false) }
+
+    var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
+    var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
+
+    // Палитра
+    val background = if (isLightTheme) LightBackground else DarkBackground
+    val buttonColor = if (isLightTheme) LightButton else DarkButton
+    val buttonPressed = if (isLightTheme) LightButtonPressed else DarkButtonPressed
+    val textColor = if (isLightTheme) LightText else DarkText
+    val mutedColor = if (isLightTheme) LightMuted else DarkMuted
 
     var uiState by remember {
         mutableStateOf(
@@ -109,12 +133,11 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .background(background)
             .windowInsetsPadding(WindowInsets.statusBars)
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        // --- Верхняя часть: поле + панель ---
         Row(
             modifier = Modifier
                 .weight(0.75f)
@@ -127,25 +150,41 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                 contentAlignment = Alignment.Center
             ) {
                 if (!isStarted) {
-                    StartButton(onClick = {
-                        game.reset()
-                        isStarted = true
-                        isPaused = false
-                        gameId++
-                        refreshUi()
-                    })
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        StartButton(
+                            buttonColor = buttonColor,
+                            textColor = textColor,
+                            onClick = {
+                                game.reset()
+                                isStarted = true
+                                isPaused = false
+                                gameId++
+                                refreshUi()
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SettingsButton(
+                            buttonColor = buttonColor,
+                            textColor = mutedColor,
+                            onClick = { showSettings = true }
+                        )
+                    }
                 } else {
                     TetrisBoardCanvas(
                         grid = state.grid,
                         activeBlocks = state.activeBlocks,
-                        activeColorArgb = state.activeColorArgb
+                        activeColorArgb = state.activeColorArgb,
+                        highlightColumn = highlightColumn,
+                        isLightTheme = isLightTheme
                     )
                 }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Правая панель
             Column(
                 modifier = Modifier
                     .weight(0.3f)
@@ -153,37 +192,37 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                 verticalArrangement = Arrangement.Top
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("SCORE", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
-                Text("${state.score}", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                Text("SCORE", color = mutedColor, style = MaterialTheme.typography.labelMedium)
+                Text(formatScore(state.score), color = textColor, style = MaterialTheme.typography.titleLarge)
 
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("BEST", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
+                Text("BEST", color = mutedColor, style = MaterialTheme.typography.labelMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("$bestScore", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleLarge)
+                    Text(formatScore(bestScore), color = Color(0xFFFFD700), style = MaterialTheme.typography.titleLarge)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("lvl $bestLevel", color = Color(0xFF778DA9), style = MaterialTheme.typography.bodySmall)
+                    Text("lvl $bestLevel", color = mutedColor, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("LEVEL", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
-                Text("${state.level}", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                Text("LEVEL", color = mutedColor, style = MaterialTheme.typography.labelMedium)
+                Text("${state.level}", color = textColor, style = MaterialTheme.typography.titleLarge)
 
                 Spacer(modifier = Modifier.height(20.dp))
-                Text("NEXT", color = Color(0xFF778DA9), style = MaterialTheme.typography.labelMedium)
+                Text("NEXT", color = mutedColor, style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(6.dp))
                 NextShapeCanvas(
                     nextBlocks = state.nextBlocks,
-                    colorArgb = state.nextColorArgb
+                    colorArgb = state.nextColorArgb,
+                    isLightTheme = isLightTheme
                 )
 
-                // Кнопка паузы
                 if (isStarted && state.isRunning && !isPaused) {
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = { isPaused = true },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ButtonColor,
-                            contentColor = Color.White
+                            containerColor = buttonColor,
+                            contentColor = textColor
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -196,7 +235,6 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- Нижняя часть: кнопки управления ---
         Box(
             modifier = Modifier
                 .weight(0.25f)
@@ -210,7 +248,10 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                     ActionButton(
                         iconRes = R.drawable.ic_right_arrow,
                         rotationDeg = 180f,
-                        enabled = isStarted && !isPaused
+                        enabled = isStarted && !isPaused,
+                        buttonColor = buttonColor,
+                        buttonPressed = buttonPressed,
+                        textColor = textColor
                     ) {
                         game.handleInput(PlayerAction.MOVE_LEFT); refreshUi()
                     }
@@ -218,7 +259,10 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                     ActionButton(
                         iconRes = R.drawable.ic_right_arrow,
                         rotationDeg = 0f,
-                        enabled = isStarted && !isPaused
+                        enabled = isStarted && !isPaused,
+                        buttonColor = buttonColor,
+                        buttonPressed = buttonPressed,
+                        textColor = textColor
                     ) {
                         game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi()
                     }
@@ -227,7 +271,10 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                 ActionButton(
                     iconRes = R.drawable.ic_right_arrow,
                     rotationDeg = 90f,
-                    enabled = isStarted && !isPaused
+                    enabled = isStarted && !isPaused,
+                    buttonColor = buttonColor,
+                    buttonPressed = buttonPressed,
+                    textColor = textColor
                 ) {
                     game.handleInput(PlayerAction.MOVE_DOWN); refreshUi()
                 }
@@ -241,6 +288,9 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                     iconRes = R.drawable.rotate_arrow,
                     rotationDeg = 0f,
                     enabled = isStarted && !isPaused,
+                    buttonColor = buttonColor,
+                    buttonPressed = buttonPressed,
+                    textColor = textColor,
                     onPress = { game.handleInput(PlayerAction.ROTATE); refreshUi() }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -248,6 +298,9 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
                     iconRes = R.drawable.hd_arrow,
                     rotationDeg = 90f,
                     enabled = isStarted && !isPaused,
+                    buttonColor = buttonColor,
+                    buttonPressed = buttonPressed,
+                    textColor = textColor,
                     onPress = { game.handleInput(PlayerAction.HARD_DROP); refreshUi() }
                 )
             }
@@ -261,12 +314,14 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
             bestScore = bestScore,
             level = state.level,
             bestLevel = bestLevel,
+            isLightTheme = isLightTheme,
             onRestart = {
                 game.reset()
                 isPaused = false
                 gameId++
                 refreshUi()
-            }
+            },
+            onSettings = { showSettings = true }
         )
     }
 
@@ -277,24 +332,59 @@ fun TetrisScreen(bestScoreStorage: BestScoreStorage) {
             bestLevel = bestLevel,
             currentScore = state.score,
             currentLevel = state.level,
+            isLightTheme = isLightTheme,
             onResume = { isPaused = false },
             onRestart = {
                 game.reset()
                 isPaused = false
                 gameId++
                 refreshUi()
+            },
+            onSettings = {
+                showSettings = true
+            }
+        )
+    }
+
+    // Настройки
+    if (showSettings) {
+        SettingsDialog(
+            isLightTheme = isLightTheme,
+            highlightColumn = highlightColumn,
+            onLightThemeChange = {
+                isLightTheme = it
+                gameSettings.isLightTheme = it
+            },
+            onHighlightChange = {
+                highlightColumn = it
+                gameSettings.highlightColumn = it
+            },
+            onClose = {
+                showSettings = false
             }
         )
     }
 }
 
+// ---------- Форматирование числа ----------
+fun formatScore(score: Int): String {
+    val s = score.toLong()
+    return when {
+        s >= 1_000_000_000L -> "${"%.1f".format(Locale.US, s / 1_000_000_000.0)}B"
+        s >= 1_000_000L -> "${"%.1f".format(Locale.US, s / 1_000_000.0)}M"
+        s >= 1_000L -> "${"%.1f".format(Locale.US, s / 1_000.0)}K"
+        else -> s.toString()
+    }
+}
+
+// ---------- Кнопки ----------
 @Composable
-fun StartButton(onClick: () -> Unit) {
+fun StartButton(buttonColor: Color, textColor: Color, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF2E4A66),
-            contentColor = Color(0xFFE0E0E0)
+            containerColor = buttonColor,
+            contentColor = textColor
         ),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
@@ -306,57 +396,176 @@ fun StartButton(onClick: () -> Unit) {
 }
 
 @Composable
+fun SettingsButton(buttonColor: Color, textColor: Color, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = buttonColor,
+            contentColor = textColor
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth(0.8f)
+            .height(52.dp)
+    ) {
+        Text("Настройки", style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+// ---------- Диалоги ----------
+@Composable
+fun SettingsDialog(
+    isLightTheme: Boolean,
+    highlightColumn: Boolean,
+    onLightThemeChange: (Boolean) -> Unit,
+    onHighlightChange: (Boolean) -> Unit,
+    onClose: () -> Unit
+) {
+    val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
+    val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
+    val muted = if (isLightTheme) Color(0xFF5A6B7B) else Color(0xFF778DA9)
+
+    Dialog(onDismissRequest = onClose) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .background(bg, RoundedCornerShape(16.dp))
+                .padding(24.dp)
+        ) {
+            Column {
+                Text("НАСТРОЙКИ", color = txt, style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Светлая тема", color = txt, style = MaterialTheme.typography.titleMedium)
+                    Switch(checked = isLightTheme, onCheckedChange = onLightThemeChange)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Подсветка колонки (ах ты ыказуальщик))", color = txt, style = MaterialTheme.typography.titleMedium)
+                    Switch(checked = highlightColumn, onCheckedChange = onHighlightChange)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onClose,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF415A77),
+                        contentColor = txt
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Закрыть", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ConfirmLeavePauseDialog(isLightTheme: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
+    val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .background(bg, RoundedCornerShape(16.dp))
+                .padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Перейти в настройки?", color = txt, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Игра останется на паузе. Вы сможете вернуться к ней после закрытия настроек.",
+                    color = txt,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF2E4A66),
+                            contentColor = txt
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Text("Отмена", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF8B3A3A),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Text("Да", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PauseDialog(
     bestScore: Int,
     bestLevel: Int,
     currentScore: Int,
     currentLevel: Int,
+    isLightTheme: Boolean,
     onResume: () -> Unit,
-    onRestart: () -> Unit
+    onRestart: () -> Unit,
+    onSettings: () -> Unit
 ) {
+    val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
+    val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
+    val muted = if (isLightTheme) Color(0xFF5A6B7B) else Color(0xFF778DA9)
+    val settingsBg = if (isLightTheme) Color(0xFFE8EEF5) else Color(0xFF2E3F57)
+    val settingsTxt = if (isLightTheme) Color(0xFF1A1A1A) else Color(0xFFB0B0B0)
+
     Dialog(onDismissRequest = onResume) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .background(Color(0xFF1B263B), RoundedCornerShape(16.dp))
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+                .background(bg, RoundedCornerShape(16.dp))
+                .padding(24.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("ПАУЗА", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Text("ПАУЗА", color = txt, style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    "Текущий счёт: $currentScore",
-                    color = Color(0xFFE0E0E0),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    "Текущий уровень: $currentLevel",
-                    color = Color(0xFFE0E0E0),
-                    style = MaterialTheme.typography.titleMedium
-                )
-
+                Text("Счёт: ${formatScore(currentScore)}", color = txt, style = MaterialTheme.typography.titleMedium)
+                Text("Уровень: $currentLevel", color = txt, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    "Лучший счёт: $bestScore",
-                    color = Color(0xFFFFD700),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    "Лучший уровень: $bestLevel",
-                    color = Color(0xFFFFD700),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Text("Лучший счёт: ${formatScore(bestScore)}", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                Text("Лучший уровень: $bestLevel", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
                     onClick = onResume,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF415A77),
-                        contentColor = Color.White
+                        containerColor = if (isLightTheme) Color(0xFFB0C4D8) else Color(0xFF415A77),
+                        contentColor = txt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -367,10 +576,24 @@ fun PauseDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
+                    onClick = onSettings,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = settingsBg,
+                        contentColor = settingsTxt
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Настройки", style = MaterialTheme.typography.titleMedium)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
                     onClick = onRestart,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2E4A66),
-                        contentColor = Color(0xFFE0E0E0)
+                        containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF2E4A66),
+                        contentColor = txt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -388,35 +611,39 @@ fun GameOverDialog(
     bestScore: Int,
     level: Int,
     bestLevel: Int,
-    onRestart: () -> Unit
+    isLightTheme: Boolean,
+    onRestart: () -> Unit,
+    onSettings: () -> Unit
 ) {
+    val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
+    val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
+    val muted = if (isLightTheme) Color(0xFF5A6B7B) else Color(0xFF778DA9)
+
     Dialog(onDismissRequest = { }) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .background(Color(0xFF1B263B), RoundedCornerShape(16.dp))
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+                .background(bg, RoundedCornerShape(16.dp))
+                .padding(24.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("GAME OVER", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Text("GAME OVER", color = txt, style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Счёт: $score", color = Color(0xFFE0E0E0), style = MaterialTheme.typography.titleMedium)
-                Text("Уровень: $level", color = Color(0xFFE0E0E0), style = MaterialTheme.typography.titleMedium)
-
+                Text("Счёт: ${formatScore(score)}", color = txt, style = MaterialTheme.typography.titleMedium)
+                Text("Уровень: $level", color = txt, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (score >= bestScore && score > 0) {
                     Text("Новый рекорд по очкам!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Text("Лучший счёт: $bestScore", color = Color(0xFF778DA9), style = MaterialTheme.typography.titleMedium)
+                    Text("Лучший счёт: ${formatScore(bestScore)}", color = muted, style = MaterialTheme.typography.titleMedium)
                 }
 
                 if (level >= bestLevel && level > 1) {
                     Text("Новый рекорд по уровню!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
                 } else {
-                    Text("Лучший уровень: $bestLevel", color = Color(0xFF778DA9), style = MaterialTheme.typography.titleMedium)
+                    Text("Лучший уровень: $bestLevel", color = muted, style = MaterialTheme.typography.titleMedium)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -424,24 +651,42 @@ fun GameOverDialog(
                 Button(
                     onClick = onRestart,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF415A77),
-                        contentColor = Color.White
+                        containerColor = if (isLightTheme) Color(0xFFB0C4D8) else Color(0xFF415A77),
+                        contentColor = txt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
                     Text("Начать заново", style = MaterialTheme.typography.titleMedium)
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onSettings,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF1B263B),
+                        contentColor = if (isLightTheme) Color(0xFF1A1A1A) else Color(0xFFB0B0B0)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Настройки", style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
     }
 }
 
+// ---------- Кнопки управления ----------
 @Composable
 fun ActionButton(
     iconRes: Int,
     enabled: Boolean = true,
     rotationDeg: Float = 0f,
+    buttonColor: Color,
+    buttonPressed: Color,
+    textColor: Color,
     onPress: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -449,11 +694,11 @@ fun ActionButton(
     val scope = rememberCoroutineScope()
 
     val bg = when {
-        !enabled -> Color(0xFF1A2634)
-        isPressed -> ButtonPressedColor
-        else -> ButtonColor
+        !enabled -> buttonColor.copy(alpha = 0.4f)
+        isPressed -> buttonPressed
+        else -> buttonColor
     }
-    val iconColor = if (enabled) Color.White else Color(0xFF555555)
+    val iconColor = if (enabled) textColor else textColor.copy(alpha = 0.4f)
 
     Box(
         modifier = Modifier
@@ -486,9 +731,7 @@ fun ActionButton(
             painter = painterResource(id = iconRes),
             contentDescription = null,
             tint = iconColor,
-            modifier = Modifier
-                .size(32.dp)
-                .rotate(rotationDeg)
+            modifier = Modifier.size(32.dp).rotate(rotationDeg)
         )
     }
 }
@@ -498,17 +741,20 @@ fun SimpleButton(
     iconRes: Int,
     enabled: Boolean = true,
     rotationDeg: Float = 0f,
+    buttonColor: Color,
+    buttonPressed: Color,
+    textColor: Color,
     onPress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
     val bg = when {
-        !enabled -> Color(0xFF1A2634)
-        isPressed -> ButtonPressedColor
-        else -> ButtonColor
+        !enabled -> buttonColor.copy(alpha = 0.4f)
+        isPressed -> buttonPressed
+        else -> buttonColor
     }
-    val iconColor = if (enabled) Color.White else Color(0xFF555555)
+    val iconColor = if (enabled) textColor else textColor.copy(alpha = 0.4f)
 
     Box(
         modifier = modifier
@@ -533,9 +779,7 @@ fun SimpleButton(
             painter = painterResource(id = iconRes),
             contentDescription = null,
             tint = iconColor,
-            modifier = Modifier
-                .size(32.dp)
-                .rotate(rotationDeg)
+            modifier = Modifier.size(32.dp).rotate(rotationDeg)
         )
     }
 }

@@ -91,10 +91,18 @@ class Board {
     }
 
     fun revealShape(shape: Shape) {
-        val matrixHeight = shape.matrix.size
-        val targetY = HIDDEN_ROWS - matrixHeight + 1
-        if (shape.y < targetY) {
-            shape.y = targetY
+        val blocks = shape.getBlocks()
+        if (blocks.isEmpty()) return
+        val lowestY = blocks.maxOf { it.y }
+        val shift = HIDDEN_ROWS - lowestY
+        if (shift > 0) {
+            repeat(shift) {
+                shape.y += 1
+                if (!isValidPosition(shape)) {
+                    shape.y -= 1
+                    return
+                }
+            }
         }
     }
 
