@@ -28,7 +28,7 @@ abstract class Game(
     // --- Lock Delay (динамический) ---
     protected var isLocking = false
     protected var lockTimer = 0L
-    protected var lockDelayMs = 500L
+    protected val lockDelayMs = 500L
     protected var lockResets = 0
     protected val maxLockResets = 15
 
@@ -66,11 +66,6 @@ abstract class Game(
     init {
         board.revealShape(currentShape)
         board.revealShape(nextShape)
-        updateLockDelay()
-    }
-
-    private fun updateLockDelay() {
-        lockDelayMs = (fallDelay * 2).coerceIn(250L, 500L)
     }
 
     fun start() = onUpdate()
@@ -78,13 +73,10 @@ abstract class Game(
     fun tick() {
         if (!isRunning) return
 
-        // Анимация очистки — замораживаем игру
         if (isClearing) {
             val elapsed = System.currentTimeMillis() - clearStartTime
             clearProgress = (elapsed.toFloat() / clearAnimDurationMs).coerceIn(0f, 1f)
-            if (clearProgress >= 1f) {
-                finishClearing()
-            }
+            if (clearProgress >= 1f) finishClearing()
             onUpdate()
             return
         }
@@ -97,9 +89,12 @@ abstract class Game(
         } else {
             if (now - lastFallTimer >= fallDelay) {
                 if (!board.tryMove(currentShape, 0, 1)) {
+                    if (lockResets == 0) {
+                        // Первое касание — новый lock
+                        lockTimer = now
+                        lockResets = 1
+                    }
                     isLocking = true
-                    lockTimer = now
-                    lockResets = 0
                 }
                 lastFallTimer = now
             }
@@ -116,7 +111,10 @@ abstract class Game(
             PlayerAction.MOVE_RIGHT -> moved = board.tryMove(currentShape, 1, 0)
             PlayerAction.MOVE_DOWN  -> {
                 if (board.tryMove(currentShape, 0, 1)) {
-                    isLocking = false; lockResets = 0; moved = true
+                    // Фигура упала вниз — сбрасываем счётчик, потому что она «спустилась»
+                    isLocking = false
+                    lockResets = 0
+                    moved = true
                 } else {
                     lockAndCheck(); onUpdate(); return
                 }
@@ -129,11 +127,15 @@ abstract class Game(
         if (moved) {
             val canFall = board.canMove(currentShape, 0, 1)
             if (canFall) {
-                isLocking = false; lockResets = 0
+                isLocking = false
             } else if (isLocking) {
-                lockResets++; lockTimer = System.currentTimeMillis()
+                lockResets++
+                lockTimer = System.currentTimeMillis()
             } else {
-                isLocking = true; lockTimer = System.currentTimeMillis(); lockResets = 1
+                // Только что коснулась дна
+                isLocking = true
+                lockTimer = System.currentTimeMillis()
+                lockResets = 1
             }
         }
         onUpdate()
@@ -182,7 +184,6 @@ abstract class Game(
 
         level = (linesClearedTotal / 10) + 1
         fallDelay = calculateFallDelay(level)
-        updateLockDelay()
 
         isClearing = false
         clearProgress = 0f
@@ -223,7 +224,6 @@ abstract class Game(
 
         score = 0; level = 1; isRunning = true
         fallDelay = calculateFallDelay(1)
-        updateLockDelay()
         isLocking = false; lockTimer = 0L; lockResets = 0
         lastFallTimer = 0L; linesClearedTotal = 0
         isClearing = false; clearProgress = 0f; clearingLines = emptyList()

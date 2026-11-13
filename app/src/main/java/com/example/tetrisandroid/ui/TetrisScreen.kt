@@ -153,7 +153,7 @@ fun TetrisScreen(
             ) {
                 TetrisBoardCanvas(
                     grid = state.grid,
-                    activeBlocks = state.activeBlocks,
+                    activeBlocks = if (state.clearingLines.isEmpty()) state.activeBlocks else emptyList(),
                     activeColorArgb = state.activeColorArgb,
                     highlightColumn = highlightColumn,
                     isLightTheme = isLightTheme,
