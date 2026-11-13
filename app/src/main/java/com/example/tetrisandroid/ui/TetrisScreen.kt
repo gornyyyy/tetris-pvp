@@ -30,7 +30,9 @@ data class UiState(
     val nextColorArgb: Int,
     val score: Int,
     val level: Int,
-    val isRunning: Boolean
+    val isRunning: Boolean,
+    val clearingLines: List<Int> = emptyList(),
+    val clearProgress: Float = 0f
 )
 
 fun formatScore(score: Int): String {
@@ -100,7 +102,9 @@ fun TetrisScreen(
             nextColorArgb = game.nextShape.colorArgb,
             score = game.score,
             level = game.level,
-            isRunning = game.isRunning
+            isRunning = game.isRunning,
+            clearingLines = game.clearingLines,
+            clearProgress = game.clearProgress
         )
         if (!game.isRunning && !statsSaved) {
             statsSaved = true
@@ -152,7 +156,9 @@ fun TetrisScreen(
                     activeBlocks = state.activeBlocks,
                     activeColorArgb = state.activeColorArgb,
                     highlightColumn = highlightColumn,
-                    isLightTheme = isLightTheme
+                    isLightTheme = isLightTheme,
+                    clearingLines = state.clearingLines,
+                    clearProgress = state.clearProgress
                 )
             }
 
@@ -247,14 +253,14 @@ fun TetrisScreen(
             onResume = { isPaused = false },
             onRestart = {
                 isPaused = false
-                gameId++  // пересоздаёт Game через remember(gameId)
+                gameId++
             },
             onSettings = { showSettings = true },
             onExitToMenu = onExitToMenu
         )
     }
 
-    if (state.isRunning) { /* игра идёт */ } else {
+    if (!state.isRunning) {
         if (showWinDialog && game is GameWithFinish) {
             WinDialog(
                 score = state.score,

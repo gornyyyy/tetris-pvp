@@ -25,11 +25,10 @@ fun ModeSelector(
     BoxWithConstraints(modifier = modifier) {
         val menuWidth = maxWidth * 0.8f
 
-        // Кнопка — точно по центру, Box = якорь для меню
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .width(menuWidth)   // <-- якорь ровно по ширине кнопки
+                .width(menuWidth)
         ) {
             Button(
                 onClick = { if (enabled) expanded = true },
@@ -46,13 +45,12 @@ fun ModeSelector(
                 Text("Режим: ${selectedMode.displayName} ▼", style = MaterialTheme.typography.titleMedium)
             }
 
-            // Меню — ширина = ширине якоря, скругление и цвет через параметры
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                shape = RoundedCornerShape(12.dp),          // <-- скругление Surface
-                containerColor = buttonColor,               // <-- фон Surface
-                modifier = Modifier.width(menuWidth)        // <-- ширина = ширине якоря
+                shape = RoundedCornerShape(12.dp),
+                containerColor = buttonColor,
+                modifier = Modifier.width(menuWidth)
             ) {
                 GameMode.values().forEach { mode ->
                     val isCompetitive = mode == GameMode.COMPETITIVE

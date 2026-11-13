@@ -78,6 +78,14 @@ class Board {
         return overflow
     }
 
+    fun findFullLines(): List<Int> {
+        val result = mutableListOf<Int>()
+        for (r in 0 until TOTAL_HEIGHT - 1) {
+            if (grid[r].all { it != 0 }) result.add(r)
+        }
+        return result
+    }
+
     fun spawnShape(): Shape {
         return when ((0..6).random()) {
             0 -> ShapeI(3, 0)

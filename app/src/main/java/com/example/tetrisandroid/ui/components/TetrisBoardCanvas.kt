@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import kotlin.math.abs
 
 @Composable
 fun TetrisBoardCanvas(
@@ -15,23 +16,19 @@ fun TetrisBoardCanvas(
     activeColorArgb: Int,
     highlightColumn: Boolean,
     isLightTheme: Boolean,
+    clearingLines: List<Int> = emptyList(),
+    clearProgress: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     val gridLineColor = if (isLightTheme) Color(0xFFE0E6EF) else Color(0xFF152238)
     val activeColor = if (isLightTheme) Color.Black else Color(activeColorArgb)
-
-    // Упавшие блоки
     val lockedColor = if (isLightTheme) Color(0xFF808080) else Color(0xFF808080)
-
     val wallColor = if (isLightTheme) Color(0xFFB0B8C4) else Color(0xFF1A2A44)
-
-    // Призрак
     val ghostColor = if (isLightTheme)
         Color(0xFF000000).copy(alpha = 0.2f)
     else
         Color(activeColorArgb).copy(alpha = 0.3f)
 
-    // Вычисляем, куда упадёт фигура
     val ghostBlocks: List<Pair<Int, Int>> = if (highlightColumn && activeBlocks.isNotEmpty()) {
         var shift = 0
         while (true) {
@@ -57,20 +54,39 @@ fun TetrisBoardCanvas(
 
         // 1) Сетка и блоки
         for (r in 4 until 24) {
-            for (c in 0 until 10) {
-                val isActive = activeBlocks.any { it.first == c && it.second == r }
-                val cellValue = if (isActive) 1 else grid[r][c]
+            val isClearingRow = r in clearingLines
 
+            for (c in 0 until 10) {
                 val topLeft = Offset(
                     x = offsetX + c * cellSize,
                     y = offsetY + (r - 4) * cellSize
                 )
 
+                if (isClearingRow) {
+                    val centerCol = 4.5f
+                    val distanceFromCenter = abs(c - centerCol) / 5f  // 0..1
+                    val localProgress = (clearProgress * 1.5f - distanceFromCenter).coerceIn(0f, 1f)
+                    val alpha = 1f - localProgress
+
+                    if (alpha > 0.01f) {
+                        drawRect(
+                            color = lockedColor.copy(alpha = alpha),
+                            topLeft = topLeft,
+                            size = Size(cellSize - 2f, cellSize - 2f)
+                        )
+                    }
+                    continue
+                }
+
+                // Обычная сетка
                 drawRect(
                     color = gridLineColor,
                     topLeft = topLeft,
                     size = Size(cellSize - 1f, cellSize - 1f)
                 )
+
+                val isActive = activeBlocks.any { it.first == c && it.second == r }
+                val cellValue = if (isActive) 1 else grid[r][c]
 
                 when (cellValue) {
                     1 -> drawRect(activeColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
@@ -82,7 +98,7 @@ fun TetrisBoardCanvas(
         }
 
         // 2) Призрак фигуры
-        if (highlightColumn && ghostBlocks.isNotEmpty()) {
+        if (highlightColumn && ghostBlocks.isNotEmpty() && clearingLines.isEmpty()) {
             for ((gx, gy) in ghostBlocks) {
                 if (gy < 4) continue
                 val topLeft = Offset(

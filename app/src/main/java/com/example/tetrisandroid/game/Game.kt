@@ -25,7 +25,7 @@ abstract class Game(
     var fallDelay = calculateFallDelay(1)
         private set
 
-    // --- Lock Delay ---
+    // --- Lock Delay (динамический) ---
     protected var isLocking = false
     protected var lockTimer = 0L
     protected var lockDelayMs = 500L
@@ -36,16 +36,24 @@ abstract class Game(
     var linesClearedTotal = 0
         private set
 
+    // --- Анимация очистки ---
+    var clearingLines: List<Int> = emptyList()
+        private set
+    var clearProgress: Float = 0f
+        private set
+    var isClearing: Boolean = false
+        private set
+
+    private var clearStartTime = 0L
+    private val clearAnimDurationMs = 300L
+
     val grid: Array<IntArray> get() = board.grid
 
-    /** Отображаемое имя режима (для UI) */
     abstract val modeName: String
     abstract val modeId: String
 
-    /** Формула задержки падения в зависимости от уровня */
     protected abstract fun calculateFallDelay(level: Int): Long
 
-    /** Начисление очков за очищенные линии */
     protected open fun calculateScore(cleared: Int, level: Int): Int {
         val points = when (cleared) {
             1 -> 100; 2 -> 300; 3 -> 500; 4 -> 800; else -> 0
@@ -53,7 +61,6 @@ abstract class Game(
         return points * level
     }
 
-    /** Условие завершения игры помимо проигрыша (для GameWithFinish) */
     protected open fun checkExtraGameOver(): Boolean = false
 
     init {
@@ -62,15 +69,31 @@ abstract class Game(
         updateLockDelay()
     }
 
+    private fun updateLockDelay() {
+        lockDelayMs = (fallDelay * 2).coerceIn(250L, 500L)
+    }
+
     fun start() = onUpdate()
 
     fun tick() {
         if (!isRunning) return
+
+        // Анимация очистки — замораживаем игру
+        if (isClearing) {
+            val elapsed = System.currentTimeMillis() - clearStartTime
+            clearProgress = (elapsed.toFloat() / clearAnimDurationMs).coerceIn(0f, 1f)
+            if (clearProgress >= 1f) {
+                finishClearing()
+            }
+            onUpdate()
+            return
+        }
+
         val now = System.currentTimeMillis()
 
         if (isLocking) {
-            if (lockResets >= maxLockResets) { lockAndSpawn(); return }
-            if (now - lockTimer >= lockDelayMs) lockAndSpawn()
+            if (lockResets >= maxLockResets) { lockAndCheck(); return }
+            if (now - lockTimer >= lockDelayMs) lockAndCheck()
         } else {
             if (now - lastFallTimer >= fallDelay) {
                 if (!board.tryMove(currentShape, 0, 1)) {
@@ -84,12 +107,8 @@ abstract class Game(
         onUpdate()
     }
 
-    private fun updateLockDelay() {
-        lockDelayMs = (fallDelay * 2).coerceIn(250L, 500L)
-    }
-
     fun handleInput(action: PlayerAction) {
-        if (!isRunning) return
+        if (!isRunning || isClearing) return
         var moved = false
 
         when (action) {
@@ -99,7 +118,7 @@ abstract class Game(
                 if (board.tryMove(currentShape, 0, 1)) {
                     isLocking = false; lockResets = 0; moved = true
                 } else {
-                    lockAndSpawn(); onUpdate(); return
+                    lockAndCheck(); onUpdate(); return
                 }
             }
             PlayerAction.ROTATE     -> moved = board.tryRotate(currentShape)
@@ -124,11 +143,36 @@ abstract class Game(
         var dropped = 0
         while (board.tryMove(currentShape, 0, 1)) dropped++
         score += dropped * 2
-        lockAndSpawn()
+        lockAndCheck()
     }
 
-    private fun lockAndSpawn() {
+    private fun lockAndCheck() {
         val overflow = board.lockPiece(currentShape)
+        val fullLines = board.findFullLines()
+
+        isLocking = false
+        lockTimer = 0L
+        lockResets = 0
+
+        if (overflow) {
+            isRunning = false
+            onGameOver(score)
+            onUpdate()
+            return
+        }
+
+        if (fullLines.isNotEmpty()) {
+            clearingLines = fullLines
+            isClearing = true
+            clearProgress = 0f
+            clearStartTime = System.currentTimeMillis()
+            onUpdate()
+        } else {
+            spawnAfterLock()
+        }
+    }
+
+    private fun finishClearing() {
         val cleared = board.clearFullLines()
         linesClearedTotal += cleared
 
@@ -140,18 +184,28 @@ abstract class Game(
         fallDelay = calculateFallDelay(level)
         updateLockDelay()
 
+        isClearing = false
+        clearProgress = 0f
+        clearingLines = emptyList()
+
+        spawnAfterLock()
+    }
+
+    private fun spawnAfterLock() {
         currentShape = nextShape
         nextShape = board.spawnShape()
         board.revealShape(currentShape)
 
         if (!board.isValidPosition(currentShape)) {
-            isRunning = false; onGameOver(score); return
+            isRunning = false
+            onGameOver(score)
+            onUpdate()
+            return
         }
 
-        isLocking = false; lockTimer = 0L; lockResets = 0
-
-        if (overflow || !board.canShapeMoveAnywhere(currentShape) || checkExtraGameOver()) {
-            isRunning = false; onGameOver(score)
+        if (!board.canShapeMoveAnywhere(currentShape) || checkExtraGameOver()) {
+            isRunning = false
+            onGameOver(score)
         }
         onUpdate()
     }
@@ -172,6 +226,7 @@ abstract class Game(
         updateLockDelay()
         isLocking = false; lockTimer = 0L; lockResets = 0
         lastFallTimer = 0L; linesClearedTotal = 0
+        isClearing = false; clearProgress = 0f; clearingLines = emptyList()
         onUpdate()
     }
 
