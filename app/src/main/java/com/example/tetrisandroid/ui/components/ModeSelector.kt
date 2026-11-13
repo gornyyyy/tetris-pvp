@@ -1,7 +1,5 @@
 package com.example.tetrisandroid.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -24,49 +22,57 @@ fun ModeSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier) {
-        // Кнопка — та же ширина, что у StartButton/SettingsButton
-        Button(
-            onClick = { if (enabled) expanded = true },
-            enabled = enabled,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = buttonColor,
-                contentColor = textColor
-            ),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(52.dp)
-                .align(Alignment.Center)
-        ) {
-            Text("Режим: ${selectedMode.displayName} ▼", style = MaterialTheme.typography.titleMedium)
-        }
+    BoxWithConstraints(modifier = modifier) {
+        val menuWidth = maxWidth * 0.8f
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
+        // Кнопка — точно по центру, Box = якорь для меню
+        Box(
             modifier = Modifier
-                .background(buttonColor, RoundedCornerShape(12.dp))
-                .width(240.dp)   // фиксированная ширина для читаемости
+                .align(Alignment.Center)
+                .width(menuWidth)   // <-- якорь ровно по ширине кнопки
         ) {
-            GameMode.values().forEach { mode ->
-                val isCompetitive = mode == GameMode.COMPETITIVE
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = mode.displayName + if (isCompetitive) " (скоро)" else "",
-                            color = if (isCompetitive) mutedColor.copy(alpha = 0.5f) else textColor,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    },
-                    onClick = {
-                        if (!isCompetitive) {
-                            onModeSelected(mode)
-                            expanded = false
-                        }
-                    },
-                    enabled = !isCompetitive
-                )
+            Button(
+                onClick = { if (enabled) expanded = true },
+                enabled = enabled,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonColor,
+                    contentColor = textColor
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Text("Режим: ${selectedMode.displayName} ▼", style = MaterialTheme.typography.titleMedium)
+            }
+
+            // Меню — ширина = ширине якоря, скругление и цвет через параметры
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                shape = RoundedCornerShape(12.dp),          // <-- скругление Surface
+                containerColor = buttonColor,               // <-- фон Surface
+                modifier = Modifier.width(menuWidth)        // <-- ширина = ширине якоря
+            ) {
+                GameMode.values().forEach { mode ->
+                    val isCompetitive = mode == GameMode.COMPETITIVE
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = mode.displayName + if (isCompetitive) " (скоро)" else "",
+                                color = if (isCompetitive) mutedColor.copy(alpha = 0.5f) else textColor,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        onClick = {
+                            if (!isCompetitive) {
+                                onModeSelected(mode)
+                                expanded = false
+                            }
+                        },
+                        enabled = !isCompetitive
+                    )
+                }
             }
         }
     }
