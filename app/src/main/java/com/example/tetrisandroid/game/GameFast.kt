@@ -12,7 +12,7 @@ class GameFast(
 
     override fun calculateFallDelay(level: Int): Long {
         val lvl = level.coerceAtLeast(1)
-        val millis = 500.0 * 0.795.pow(lvl - 1)
+        val millis = 150.0 * 0.7782.pow(lvl - 1)
         return millis.toLong().coerceAtLeast(MIN_FALL_DELAY)
     }
 

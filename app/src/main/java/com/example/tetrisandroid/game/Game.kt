@@ -28,7 +28,7 @@ abstract class Game(
     // --- Lock Delay ---
     protected var isLocking = false
     protected var lockTimer = 0L
-    protected val lockDelayMs = 500L
+    protected var lockDelayMs = 500L
     protected var lockResets = 0
     protected val maxLockResets = 15
 
@@ -59,6 +59,7 @@ abstract class Game(
     init {
         board.revealShape(currentShape)
         board.revealShape(nextShape)
+        updateLockDelay()
     }
 
     fun start() = onUpdate()
@@ -81,6 +82,10 @@ abstract class Game(
             }
         }
         onUpdate()
+    }
+
+    private fun updateLockDelay() {
+        lockDelayMs = (fallDelay * 2).coerceIn(250L, 500L)
     }
 
     fun handleInput(action: PlayerAction) {
@@ -133,6 +138,7 @@ abstract class Game(
 
         level = (linesClearedTotal / 10) + 1
         fallDelay = calculateFallDelay(level)
+        updateLockDelay()
 
         currentShape = nextShape
         nextShape = board.spawnShape()
@@ -163,6 +169,7 @@ abstract class Game(
 
         score = 0; level = 1; isRunning = true
         fallDelay = calculateFallDelay(1)
+        updateLockDelay()
         isLocking = false; lockTimer = 0L; lockResets = 0
         lastFallTimer = 0L; linesClearedTotal = 0
         onUpdate()

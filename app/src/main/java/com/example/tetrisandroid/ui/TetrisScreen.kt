@@ -70,6 +70,8 @@ fun TetrisScreen(
     var bestScore by remember { mutableStateOf(statsStorage.getBestScore(mode.id)) }
     var bestLevel by remember { mutableStateOf(statsStorage.getBestLevel(mode.id)) }
 
+    var statsSaved by remember(gameId) { mutableStateOf(false) }
+
     val background = if (isLightTheme) LightBackground else DarkBackground
     val buttonColor = if (isLightTheme) LightButton else DarkButton
     val buttonPressed = if (isLightTheme) LightButtonPressed else DarkButtonPressed
@@ -100,7 +102,8 @@ fun TetrisScreen(
             level = game.level,
             isRunning = game.isRunning
         )
-        if (!game.isRunning) {
+        if (!game.isRunning && !statsSaved) {
+            statsSaved = true
             val won = (game as? GameWithFinish)?.isWon == true
             statsStorage.saveResult(
                 modeId = mode.id,

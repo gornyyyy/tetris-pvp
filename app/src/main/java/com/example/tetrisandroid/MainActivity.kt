@@ -25,20 +25,22 @@ class MainActivity : ComponentActivity() {
         val gameSettings = GameSettings(applicationContext)
 
         val versionChanged = versionHandler.isVersionChanged()
-        val legacyRecords = if (versionChanged) versionHandler.getLegacyRecords() else null
+        val initialOldRecords = if (versionChanged) versionHandler.getLegacyRecords() else null
 
         setContent {
             TetrisAndroidTheme {
                 var currentMode by remember { mutableStateOf<GameMode?>(null) }
+                var oldRecords by remember { mutableStateOf(initialOldRecords) }
 
                 if (currentMode == null) {
                     MenuScreen(
                         gameSettings = gameSettings,
                         statsStorage = statsStorage,
-                        oldRecordsOnUpdate = legacyRecords,
+                        oldRecordsOnUpdate = oldRecords,
                         onUpdateDialogClose = {
-                            versionHandler.saveCurrentVersion();
+                            versionHandler.saveCurrentVersion()
                             versionHandler.clearLegacyRecords()
+                            oldRecords = null
                         },
                         onStartGame = { mode -> currentMode = mode }
                     )
