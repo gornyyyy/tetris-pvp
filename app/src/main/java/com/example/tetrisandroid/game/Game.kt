@@ -2,13 +2,12 @@ package com.example.tetrisandroid.game
 
 import com.example.tetrisandroid.model.Board
 import com.example.tetrisandroid.model.PlayerAction
-import kotlin.math.pow
 
-class Game(
+abstract class Game(
     private val onUpdate: () -> Unit,
     private val onGameOver: (Int) -> Unit
 ) {
-    private val board = Board()
+    protected val board = Board()
 
     var currentShape = board.spawnShape()
         private set
@@ -27,40 +26,50 @@ class Game(
         private set
 
     // --- Lock Delay ---
-    private var isLocking = false
-    private var lockTimer = 0L
-    private val lockDelayMs = 500L
-    private var lockResets = 0
-    private val maxLockResets = 15
+    protected var isLocking = false
+    protected var lockTimer = 0L
+    protected val lockDelayMs = 500L
+    protected var lockResets = 0
+    protected val maxLockResets = 15
 
-    private var lastFallTimer = 0L
-    private var linesClearedTotal = 0
+    protected var lastFallTimer = 0L
+    var linesClearedTotal = 0
+        private set
 
-    // Публичный доступ к сетке (для отрисовки)
     val grid: Array<IntArray> get() = board.grid
 
+    /** Отображаемое имя режима (для UI) */
+    abstract val modeName: String
+    abstract val modeId: String
+
+    /** Формула задержки падения в зависимости от уровня */
+    protected abstract fun calculateFallDelay(level: Int): Long
+
+    /** Начисление очков за очищенные линии */
+    protected open fun calculateScore(cleared: Int, level: Int): Int {
+        val points = when (cleared) {
+            1 -> 100; 2 -> 300; 3 -> 500; 4 -> 800; else -> 0
+        }
+        return points * level
+    }
+
+    /** Условие завершения игры помимо проигрыша (для GameWithFinish) */
+    protected open fun checkExtraGameOver(): Boolean = false
+
     init {
-        // Сразу делаем стартовую фигуру видимой
         board.revealShape(currentShape)
         board.revealShape(nextShape)
     }
 
-    fun start() {
-        onUpdate()
-    }
+    fun start() = onUpdate()
 
     fun tick() {
         if (!isRunning) return
         val now = System.currentTimeMillis()
 
         if (isLocking) {
-            if (lockResets >= maxLockResets) {
-                lockAndSpawn()
-                return
-            }
-            if (now - lockTimer >= lockDelayMs) {
-                lockAndSpawn()
-            }
+            if (lockResets >= maxLockResets) { lockAndSpawn(); return }
+            if (now - lockTimer >= lockDelayMs) lockAndSpawn()
         } else {
             if (now - lastFallTimer >= fallDelay) {
                 if (!board.tryMove(currentShape, 0, 1)) {
@@ -83,13 +92,9 @@ class Game(
             PlayerAction.MOVE_RIGHT -> moved = board.tryMove(currentShape, 1, 0)
             PlayerAction.MOVE_DOWN  -> {
                 if (board.tryMove(currentShape, 0, 1)) {
-                    isLocking = false
-                    lockResets = 0
-                    moved = true
+                    isLocking = false; lockResets = 0; moved = true
                 } else {
-                    lockAndSpawn()
-                    onUpdate()
-                    return
+                    lockAndSpawn(); onUpdate(); return
                 }
             }
             PlayerAction.ROTATE     -> moved = board.tryRotate(currentShape)
@@ -100,27 +105,20 @@ class Game(
         if (moved) {
             val canFall = board.canMove(currentShape, 0, 1)
             if (canFall) {
-                isLocking = false
-                lockResets = 0
+                isLocking = false; lockResets = 0
             } else if (isLocking) {
-                lockResets++
-                lockTimer = System.currentTimeMillis()
+                lockResets++; lockTimer = System.currentTimeMillis()
             } else {
-                isLocking = true
-                lockTimer = System.currentTimeMillis()
-                lockResets = 1
+                isLocking = true; lockTimer = System.currentTimeMillis(); lockResets = 1
             }
         }
-
         onUpdate()
     }
 
     private fun hardDrop() {
         var dropped = 0
-        while (board.tryMove(currentShape, 0, 1)) {
-            dropped++
-        }
-        score += dropped * 2 // 2 очка за каждую клетку
+        while (board.tryMove(currentShape, 0, 1)) dropped++
+        score += dropped * 2
         lockAndSpawn()
     }
 
@@ -130,89 +128,47 @@ class Game(
         linesClearedTotal += cleared
 
         if (cleared > 0) {
-            val points = when (cleared) {
-                1 -> 100
-                2 -> 300
-                3 -> 500
-                4 -> 800
-                else -> 0
-            }
-            score += points * level
+            score += calculateScore(cleared, level)
         }
 
-        // Уровень каждые 10 линий
         level = (linesClearedTotal / 10) + 1
         fallDelay = calculateFallDelay(level)
 
         currentShape = nextShape
         nextShape = board.spawnShape()
-
         board.revealShape(currentShape)
 
         if (!board.isValidPosition(currentShape)) {
-            isRunning = false
-            onGameOver(score)
-            return
+            isRunning = false; onGameOver(score); return
         }
 
-        isLocking = false
-        lockTimer = 0L
-        lockResets = 0
+        isLocking = false; lockTimer = 0L; lockResets = 0
 
-        if (overflow || !board.canShapeMoveAnywhere(currentShape)) {
-            isRunning = false
-            onGameOver(score)
+        if (overflow || !board.canShapeMoveAnywhere(currentShape) || checkExtraGameOver()) {
+            isRunning = false; onGameOver(score)
         }
-
         onUpdate()
     }
 
     fun reset() {
-        // Очищаем поле
         for (r in 0 until board.grid.size) {
             for (c in 0 until board.grid[0].size) {
                 board.grid[r][c] = if (r == board.grid.size - 1) 3 else 0
             }
         }
-
         currentShape = board.spawnShape()
         nextShape = board.spawnShape()
         board.revealShape(currentShape)
         board.revealShape(nextShape)
 
-        score = 0
-        level = 1
-        isRunning = true
+        score = 0; level = 1; isRunning = true
         fallDelay = calculateFallDelay(1)
-        isLocking = false
-        lockTimer = 0L
-        lockResets = 0
-        lastFallTimer = 0L
-        linesClearedTotal = 0
-
+        isLocking = false; lockTimer = 0L; lockResets = 0
+        lastFallTimer = 0L; linesClearedTotal = 0
         onUpdate()
     }
 
-    private fun calculateFallDelay(level: Int): Long {
-        val lvl = level.coerceAtLeast(1)
-        val millis: Double = when {
-            lvl <= 9 -> {
-                600.0 - (lvl - 1) * 50.0
-            }
-            lvl <= 16 -> {
-                200.0 * 0.7937.pow(lvl - 10)
-            }
-            lvl <= 19 -> {
-                50.0
-            }
-            else -> {
-                50.0 - (lvl - 20) * (34.0 / 9.0)
-            }
-        }
-        return millis.toLong().coerceAtLeast(MIN_FALL_DELAY)
-    }
-
     companion object {
-        private const val MIN_FALL_DELAY = 16L
+        protected const val MIN_FALL_DELAY = 16L
     }
 }

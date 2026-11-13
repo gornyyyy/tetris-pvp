@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.tetrisandroid.ui.formatScore
+import com.example.tetrisandroid.ui.theme.DarkAccent
+import com.example.tetrisandroid.ui.theme.LightAccent
 
 @Composable
 fun PauseDialog(
@@ -24,7 +26,8 @@ fun PauseDialog(
     isLightTheme: Boolean,
     onResume: () -> Unit,
     onRestart: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onExitToMenu: () -> Unit
 ) {
     val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
     val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
@@ -46,8 +49,8 @@ fun PauseDialog(
                 Text("Счёт: ${formatScore(currentScore)}", color = txt, style = MaterialTheme.typography.titleMedium)
                 Text("Уровень: $currentLevel", color = txt, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Лучший счёт: ${formatScore(bestScore)}", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
-                Text("Лучший уровень: $bestLevel", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                Text("Лучший счёт: ${formatScore(bestScore)}", color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleMedium)
+                Text("Лучший уровень: $bestLevel", color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -75,6 +78,15 @@ fun PauseDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) { Text("Заново", style = MaterialTheme.typography.titleMedium) }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onExitToMenu,
+                    colors = ButtonDefaults.buttonColors(containerColor = btnBg, contentColor = btnTxt),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) { Text("В меню", style = MaterialTheme.typography.titleMedium) }
             }
         }
     }

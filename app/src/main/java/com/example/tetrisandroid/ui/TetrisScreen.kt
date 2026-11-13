@@ -3,10 +3,7 @@ package com.example.tetrisandroid.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,16 +12,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import com.example.tetrisandroid.R
-import com.example.tetrisandroid.data.BestScoreStorage
 import com.example.tetrisandroid.data.GameSettings
-import com.example.tetrisandroid.game.Game
+import com.example.tetrisandroid.data.GameStatsStorage
+import com.example.tetrisandroid.game.*
 import com.example.tetrisandroid.model.PlayerAction
-import com.example.tetrisandroid.ui.components.ActionButton
-import com.example.tetrisandroid.ui.components.NextShapeCanvas
-import com.example.tetrisandroid.ui.components.SettingsButton
-import com.example.tetrisandroid.ui.components.SimpleButton
-import com.example.tetrisandroid.ui.components.StartButton
-import com.example.tetrisandroid.ui.components.TetrisBoardCanvas
+import com.example.tetrisandroid.ui.components.*
 import com.example.tetrisandroid.ui.dialogs.*
 import com.example.tetrisandroid.ui.theme.*
 import kotlinx.coroutines.delay
@@ -53,23 +45,30 @@ fun formatScore(score: Int): String {
 
 @Composable
 fun TetrisScreen(
-    bestScoreStorage: BestScoreStorage,
+    mode: GameMode,
+    statsStorage: GameStatsStorage,
     gameSettings: GameSettings,
-    oldRecordsOnUpdate: BestScoreStorage.OldRecords? = null,
-    onUpdateDialogClose: () -> Unit = {}
+    onExitToMenu: () -> Unit
 ) {
-    val game = remember { Game(onUpdate = {}, onGameOver = {}) }
-
-    var bestScore by remember { mutableStateOf(bestScoreStorage.getBestScore()) }
-    var bestLevel by remember { mutableStateOf(bestScoreStorage.getBestLevel()) }
-    var isStarted by remember { mutableStateOf(false) }
-    var isPaused by remember { mutableStateOf(false) }
     var gameId by remember { mutableStateOf(0) }
+    val game = remember(gameId) {
+        when (mode) {
+            GameMode.CLASSIC -> GameClassic({}, {})
+            GameMode.FAST -> GameFast({}, {})
+            GameMode.FINISH -> GameWithFinish({}, {})
+            GameMode.COMPETITIVE -> GameCompetitive({}, {})
+        }
+    }
+
+    var isPaused by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showWinDialog by remember { mutableStateOf(false) }
 
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
-    var showUpdateDialog by remember { mutableStateOf(oldRecordsOnUpdate != null) }
+
+    var bestScore by remember { mutableStateOf(statsStorage.getBestScore(mode.id)) }
+    var bestLevel by remember { mutableStateOf(statsStorage.getBestLevel(mode.id)) }
 
     val background = if (isLightTheme) LightBackground else DarkBackground
     val buttonColor = if (isLightTheme) LightButton else DarkButton
@@ -102,14 +101,22 @@ fun TetrisScreen(
             isRunning = game.isRunning
         )
         if (!game.isRunning) {
-            bestScoreStorage.saveResults(game.score, game.level)
-            bestScore = bestScoreStorage.getBestScore()
-            bestLevel = bestScoreStorage.getBestLevel()
+            val won = (game as? GameWithFinish)?.isWon == true
+            statsStorage.saveResult(
+                modeId = mode.id,
+                score = game.score,
+                level = game.level,
+                lines = game.linesClearedTotal,
+                won = won
+            )
+            bestScore = statsStorage.getBestScore(mode.id)
+            bestLevel = statsStorage.getBestLevel(mode.id)
+            if (won) showWinDialog = true
         }
     }
 
     LaunchedEffect(gameId, isPaused) {
-        if (!isStarted || isPaused) return@LaunchedEffect
+        if (isPaused) return@LaunchedEffect
         refreshUi()
         while (game.isRunning) {
             delay(16)
@@ -122,7 +129,7 @@ fun TetrisScreen(
     val state = uiState
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        if (isStarted && !isPaused && state.isRunning) isPaused = true
+        if (!isPaused && state.isRunning) isPaused = true
     }
 
     Column(
@@ -135,33 +142,15 @@ fun TetrisScreen(
     ) {
         Row(modifier = Modifier.weight(0.75f).fillMaxWidth()) {
             Box(
-                modifier = Modifier.weight(0.7f).fillMaxHeight(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.weight(0.7f).fillMaxHeight()
             ) {
-                if (!isStarted) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        StartButton(buttonColor, textColor) {
-                            game.reset()
-                            isStarted = true
-                            isPaused = false
-                            gameId++
-                            refreshUi()
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SettingsButton(buttonColor, mutedColor) { showSettings = true }
-                    }
-                } else {
-                    TetrisBoardCanvas(
-                        grid = state.grid,
-                        activeBlocks = state.activeBlocks,
-                        activeColorArgb = state.activeColorArgb,
-                        highlightColumn = highlightColumn,
-                        isLightTheme = isLightTheme
-                    )
-                }
+                TetrisBoardCanvas(
+                    grid = state.grid,
+                    activeBlocks = state.activeBlocks,
+                    activeColorArgb = state.activeColorArgb,
+                    highlightColumn = highlightColumn,
+                    isLightTheme = isLightTheme
+                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -170,14 +159,20 @@ fun TetrisScreen(
                 modifier = Modifier.weight(0.3f).fillMaxHeight(),
                 verticalArrangement = Arrangement.Top
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = mode.displayName.uppercase(),
+                    color = mutedColor.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text("SCORE", color = mutedColor, style = MaterialTheme.typography.labelMedium)
                 Text(formatScore(state.score), color = textColor, style = MaterialTheme.typography.titleLarge)
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("BEST", color = mutedColor, style = MaterialTheme.typography.labelMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(formatScore(bestScore), color = Color(0xFFFFD700), style = MaterialTheme.typography.titleLarge)
+                    Text(formatScore(bestScore), color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleLarge)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("lvl $bestLevel", color = mutedColor, style = MaterialTheme.typography.bodySmall)
                 }
@@ -191,7 +186,7 @@ fun TetrisScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 NextShapeCanvas(state.nextBlocks, state.nextColorArgb, isLightTheme)
 
-                if (isStarted && state.isRunning && !isPaused) {
+                if (state.isRunning && !isPaused) {
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = { isPaused = true },
@@ -211,54 +206,72 @@ fun TetrisScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row {
-                    ActionButton(R.drawable.ic_right_arrow, isStarted && !isPaused, 180f, buttonColor, buttonPressed, textColor) {
+                    ActionButton(R.drawable.ic_right_arrow, !isPaused, 180f, buttonColor, buttonPressed, textColor) {
                         game.handleInput(PlayerAction.MOVE_LEFT); refreshUi()
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    ActionButton(R.drawable.ic_right_arrow, isStarted && !isPaused, 0f, buttonColor, buttonPressed, textColor) {
+                    ActionButton(R.drawable.ic_right_arrow, !isPaused, 0f, buttonColor, buttonPressed, textColor) {
                         game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi()
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                ActionButton(R.drawable.ic_right_arrow, isStarted && !isPaused, 90f, buttonColor, buttonPressed, textColor) {
+                ActionButton(R.drawable.ic_right_arrow, !isPaused, 90f, buttonColor, buttonPressed, textColor) {
                     game.handleInput(PlayerAction.MOVE_DOWN); refreshUi()
                 }
             }
-
             Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                SimpleButton(R.drawable.rotate_arrow, isStarted && !isPaused, 0f, buttonColor, buttonPressed, textColor) {
+                SimpleButton(R.drawable.rotate_arrow, !isPaused, 0f, buttonColor, buttonPressed, textColor) {
                     game.handleInput(PlayerAction.ROTATE); refreshUi()
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                SimpleButton(R.drawable.hd_arrow, isStarted && !isPaused, 90f, buttonColor, buttonPressed, textColor) {
+                SimpleButton(R.drawable.hd_arrow, !isPaused, 90f, buttonColor, buttonPressed, textColor) {
                     game.handleInput(PlayerAction.HARD_DROP); refreshUi()
                 }
             }
         }
     }
 
-    if (isStarted && !state.isRunning) {
-        GameOverDialog(
-            score = state.score, bestScore = bestScore,
-            level = state.level, bestLevel = bestLevel,
+    if (isPaused) {
+        PauseDialog(
+            bestScore = bestScore,
+            bestLevel = bestLevel,
+            currentScore = state.score,
+            currentLevel = state.level,
             isLightTheme = isLightTheme,
-            onRestart = { game.reset(); isPaused = false; gameId++; refreshUi() },
-            onSettings = { showSettings = true }
+            onResume = { isPaused = false },
+            onRestart = {
+                isPaused = false
+                gameId++  // пересоздаёт Game через remember(gameId)
+            },
+            onSettings = { showSettings = true },
+            onExitToMenu = onExitToMenu
         )
     }
 
-    if (isPaused) {
-        PauseDialog(
-            bestScore = bestScore, bestLevel = bestLevel,
-            currentScore = state.score, currentLevel = state.level,
-            isLightTheme = isLightTheme,
-            onResume = { isPaused = false },
-            onRestart = { game.reset(); isPaused = false; gameId++; refreshUi() },
-            onSettings = { showSettings = true }
-        )
+    if (state.isRunning) { /* игра идёт */ } else {
+        if (showWinDialog && game is GameWithFinish) {
+            WinDialog(
+                score = state.score,
+                level = state.level,
+                isLightTheme = isLightTheme,
+                onRestart = { showWinDialog = false; gameId++ },
+                onExitToMenu = onExitToMenu
+            )
+        } else if (!showWinDialog) {
+            GameOverDialog(
+                score = state.score,
+                bestScore = bestScore,
+                level = state.level,
+                bestLevel = bestLevel,
+                isLightTheme = isLightTheme,
+                onRestart = { gameId++; showWinDialog = false },
+                onExitToMenu = onExitToMenu,
+                onSettings = { showSettings = true }
+            )
+        }
     }
 
     if (showSettings) {
@@ -268,19 +281,6 @@ fun TetrisScreen(
             onLightThemeChange = { isLightTheme = it; gameSettings.isLightTheme = it },
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
             onClose = { showSettings = false }
-        )
-    }
-
-    if (showUpdateDialog && oldRecordsOnUpdate != null) {
-        UpdateDialog(
-            oldRecords = oldRecordsOnUpdate,
-            isLightTheme = isLightTheme,
-            onClose = {
-                showUpdateDialog = false
-                onUpdateDialogClose()
-                bestScore = 0
-                bestLevel = 1
-            }
         )
     }
 }

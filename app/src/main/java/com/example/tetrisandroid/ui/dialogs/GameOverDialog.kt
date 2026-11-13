@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.tetrisandroid.ui.formatScore
+import com.example.tetrisandroid.ui.theme.DarkAccent
+import com.example.tetrisandroid.ui.theme.LightAccent
 
 @Composable
 fun GameOverDialog(
@@ -23,7 +25,8 @@ fun GameOverDialog(
     bestLevel: Int,
     isLightTheme: Boolean,
     onRestart: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onExitToMenu: () -> Unit
 ) {
     val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
     val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
@@ -45,13 +48,13 @@ fun GameOverDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (score >= bestScore && score > 0) {
-                    Text("Новый рекорд по очкам!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                    Text("Новый рекорд по очкам!", color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleMedium)
                 } else {
                     Text("Лучший счёт: ${formatScore(bestScore)}", color = muted, style = MaterialTheme.typography.titleMedium)
                 }
 
                 if (level >= bestLevel && level > 1) {
-                    Text("Новый рекорд по уровню!", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                    Text("Новый рекорд по уровню!", color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleMedium)
                 } else {
                     Text("Лучший уровень: $bestLevel", color = muted, style = MaterialTheme.typography.titleMedium)
                 }
@@ -79,6 +82,18 @@ fun GameOverDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) { Text("Настройки", style = MaterialTheme.typography.titleMedium) }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onExitToMenu,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF1B263B),
+                        contentColor = if (isLightTheme) Color(0xFF1A1A1A) else Color(0xFFB0B0B0)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) { Text("В меню", style = MaterialTheme.typography.titleMedium) }
             }
         }
     }

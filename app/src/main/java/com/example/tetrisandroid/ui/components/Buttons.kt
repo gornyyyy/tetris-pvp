@@ -121,8 +121,8 @@ fun SimpleButton(
     buttonColor: Color,
     buttonPressed: Color,
     textColor: Color,
-    onPress: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPress: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
 

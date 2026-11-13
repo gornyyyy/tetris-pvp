@@ -14,16 +14,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.example.tetrisandroid.data.BestScoreStorage
+import com.example.tetrisandroid.data.VersionHandler
+import com.example.tetrisandroid.ui.theme.DarkAccent
+import com.example.tetrisandroid.ui.theme.LightAccent
 
 @Composable
 fun UpdateDialog(
-    oldRecords: BestScoreStorage.OldRecords,
+    oldRecords: VersionHandler.LegacyRecords,
     isLightTheme: Boolean,
     onClose: () -> Unit
 ) {
     val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
     val txt = if (isLightTheme) Color(0xFF1A1A1A) else Color.White
+    val accent = if (isLightTheme) LightAccent else DarkAccent
 
     Dialog(onDismissRequest = onClose) {
         Box(
@@ -45,13 +48,13 @@ fun UpdateDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Ваш лучший скор в classic: ${oldRecords.score}", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
-                Text("Ваш лучший лвл в classic: ${oldRecords.level}", color = Color(0xFFFFD700), style = MaterialTheme.typography.titleMedium)
+                Text("Ваш лучший скор: ${oldRecords.score}", color = accent, style = MaterialTheme.typography.titleMedium)
+                Text("Ваш лучший лвл: ${oldRecords.level}", color = accent, style = MaterialTheme.typography.titleMedium)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "А теперь время ставить новые рекорды!",
+                    text = "А теперь время ставить новые рекорды! Потому что старых больше нема)",
                     color = txt,
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center

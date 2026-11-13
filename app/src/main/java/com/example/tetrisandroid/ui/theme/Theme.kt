@@ -26,6 +26,9 @@ val LightButtonPressed = Color(0xFFB0C4D8)
 val LightText = Color(0xFF1A1A1A)
 val LightMuted = Color(0xFF5A6B7B)
 
+val DarkAccent = Color(0xFFFFD700)
+val LightAccent = Color(0xFFC86B4A)
+
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
