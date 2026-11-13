@@ -10,6 +10,21 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+
+// ----- Тёмная тема -----
+val DarkBackground = Color(0xFF0D1B2A)
+val DarkButton = Color(0xFF1B263B)
+val DarkButtonPressed = Color(0xFF415A77)
+val DarkText = Color.White
+val DarkMuted = Color(0xFF778DA9)
+
+// ----- Светлая тема -----
+val LightBackground = Color(0xFFF3F6FB)
+val LightButton = Color(0xFFDCE3ED)
+val LightButtonPressed = Color(0xFFB0C4D8)
+val LightText = Color(0xFF1A1A1A)
+val LightMuted = Color(0xFF5A6B7B)
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,

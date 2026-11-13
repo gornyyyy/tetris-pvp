@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                     gameSettings = gameSettings,
                     oldRecordsOnUpdate = oldRecords,
                     onUpdateDialogClose = {
-                        storage.resetRecordsAndSaveVersion()
+                        storage.saveCurrentVersion()
                     }
                 )
             }

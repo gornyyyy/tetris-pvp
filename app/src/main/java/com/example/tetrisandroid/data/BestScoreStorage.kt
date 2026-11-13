@@ -57,6 +57,9 @@ class BestScoreStorage(context: Context) {
             .putInt(KEY_APP_VERSION, BuildConfig.VERSION_CODE)
             .apply()
     }
+    fun saveCurrentVersion() {
+        prefs.edit().putInt(KEY_APP_VERSION, BuildConfig.VERSION_CODE).apply()
+    }
 
     /**
      * Вызывается при первом запуске (или если версия не сохранена),

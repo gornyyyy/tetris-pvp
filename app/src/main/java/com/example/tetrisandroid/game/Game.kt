@@ -83,7 +83,6 @@ class Game(
             PlayerAction.MOVE_RIGHT -> moved = board.tryMove(currentShape, 1, 0)
             PlayerAction.MOVE_DOWN  -> {
                 if (board.tryMove(currentShape, 0, 1)) {
-                    // Фигура упала - сбрасываем lock полностью
                     isLocking = false
                     lockResets = 0
                     moved = true
@@ -101,7 +100,6 @@ class Game(
         if (moved) {
             val canFall = board.canMove(currentShape, 0, 1)
             if (canFall) {
-                // Отменяем lock - фигура падает
                 isLocking = false
                 lockResets = 0
             } else if (isLocking) {
