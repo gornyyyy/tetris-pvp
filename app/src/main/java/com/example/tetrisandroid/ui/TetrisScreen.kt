@@ -1,6 +1,7 @@
 package com.example.tetrisandroid.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -8,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
@@ -63,7 +65,9 @@ fun TetrisScreen(
     val btnWidth = layoutSettings.actionButtonWidth.dp
     val btnHeight = layoutSettings.actionButtonHeight.dp
     val hPad = layoutSettings.horizontalPadding.dp
-    val vPad = layoutSettings.verticalPadding.dp
+
+    // Размер NEXT фигуры масштабируется от topWeight (базовый — 136 dp при topWeight = 0.75f)
+    val nextSize = (136f * (topWeight / 0.75f)).coerceIn(80f, 160f).dp
 
     val game = remember {
         when (mode) {
@@ -76,6 +80,8 @@ fun TetrisScreen(
 
     var isPaused by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var openedSettingsFromPause by remember { mutableStateOf(false) }
+    var showLeavePauseConfirm by remember { mutableStateOf(false) }
     var showWinDialog by remember { mutableStateOf(false) }
 
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
@@ -157,7 +163,7 @@ fun TetrisScreen(
             .background(background)
             .windowInsetsPadding(WindowInsets.statusBars)
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = hPad, vertical = vPad)
+            .padding(horizontal = hPad)
     ) {
         Row(modifier = Modifier.weight(topWeight).fillMaxWidth()) {
             Box(
@@ -205,16 +211,28 @@ fun TetrisScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 Text("NEXT", color = mutedColor, style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(6.dp))
-                NextShapeCanvas(state.nextBlocks, state.nextColorArgb, isLightTheme)
+                NextShapeCanvas(
+                    nextBlocks = state.nextBlocks,
+                    colorArgb = state.nextColorArgb,
+                    isLightTheme = isLightTheme,
+                    canvasSize = nextSize
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 if (state.isRunning && !isPaused) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(
-                        onClick = { isPaused = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor, contentColor = textColor),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("II", style = MaterialTheme.typography.titleMedium) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .background(buttonColor, RoundedCornerShape(12.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { isPaused = true })
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("II", color = textColor, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }
@@ -300,6 +318,7 @@ fun TetrisScreen(
         }
     }
 
+    // --- Pause ---
     if (isPaused) {
         PauseDialog(
             bestScore = bestScore,
@@ -309,11 +328,15 @@ fun TetrisScreen(
             isLightTheme = isLightTheme,
             onResume = { isPaused = false },
             onRestart = { onRestart() },
-            onSettings = { showSettings = true },
+            onSettings = {
+                openedSettingsFromPause = true
+                showSettings = true
+            },
             onExitToMenu = onExitToMenu
         )
     }
 
+    // --- Game Over / Win ---
     if (!state.isRunning) {
         if (showWinDialog && game is GameWithFinish) {
             WinDialog(
@@ -332,11 +355,15 @@ fun TetrisScreen(
                 isLightTheme = isLightTheme,
                 onRestart = { onRestart() },
                 onExitToMenu = onExitToMenu,
-                onSettings = { showSettings = true }
+                onSettings = {
+                    openedSettingsFromPause = false   // игра уже окончена
+                    showSettings = true
+                }
             )
         }
     }
 
+    // --- Настройки ---
     if (showSettings) {
         SettingsDialog(
             isLightTheme = isLightTheme,
@@ -345,9 +372,29 @@ fun TetrisScreen(
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
             onOpenLayoutEditor = {
                 showSettings = false
-                onOpenLayoutEditor()
+                if (openedSettingsFromPause) {
+                    showLeavePauseConfirm = true
+                } else {
+                    onOpenLayoutEditor()
+                }
             },
             onClose = { showSettings = false }
+        )
+    }
+
+    // --- Подтверждение (только из паузы) ---
+    if (showLeavePauseConfirm) {
+        ConfirmLeavePauseDialog(
+            isLightTheme = isLightTheme,
+            onConfirm = {
+                showLeavePauseConfirm = false
+                isPaused = false
+                onOpenLayoutEditor()
+            },
+            onDismiss = {
+                showLeavePauseConfirm = false
+                showSettings = true   // вернуться в настройки
+            }
         )
     }
 }
