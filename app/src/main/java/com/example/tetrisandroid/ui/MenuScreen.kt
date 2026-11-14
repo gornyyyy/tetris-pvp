@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
+import com.example.tetrisandroid.data.LayoutSettings
 import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.ui.components.ModeSelector
@@ -25,15 +26,19 @@ import com.example.tetrisandroid.ui.theme.*
 @Composable
 fun MenuScreen(
     gameSettings: GameSettings,
+    layoutSettings: LayoutSettings,
     statsStorage: GameStatsStorage,
     oldRecordsOnUpdate: VersionHandler.LegacyRecords?,
     onUpdateDialogClose: () -> Unit,
-    onStartGame: (GameMode) -> Unit
+    onStartGame: (GameMode) -> Unit,
+    initialShowLayoutEditor: Boolean = false,
+    onLayoutEditorClosed: () -> Unit = {}
 ) {
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
     var selectedMode by remember { mutableStateOf(GameMode.CLASSIC) }
     var showSettings by remember { mutableStateOf(false) }
+    var showLayoutEditor by remember { mutableStateOf(initialShowLayoutEditor) }
     var showUpdateDialog by remember { mutableStateOf(oldRecordsOnUpdate != null) }
 
     val background = if (isLightTheme) LightBackground else DarkBackground
@@ -94,7 +99,22 @@ fun MenuScreen(
             highlightColumn = highlightColumn,
             onLightThemeChange = { isLightTheme = it; gameSettings.isLightTheme = it },
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
+            onOpenLayoutEditor = {
+                showSettings = false
+                showLayoutEditor = true
+            },
             onClose = { showSettings = false }
+        )
+    }
+
+    if (showLayoutEditor) {
+        LayoutEditorScreen(
+            layoutSettings = layoutSettings,
+            isLightTheme = isLightTheme,
+            onBack = {
+                showLayoutEditor = false
+                onLayoutEditorClosed()
+            }
         )
     }
 

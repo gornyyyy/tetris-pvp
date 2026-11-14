@@ -21,6 +21,7 @@ fun SettingsDialog(
     highlightColumn: Boolean,
     onLightThemeChange: (Boolean) -> Unit,
     onHighlightChange: (Boolean) -> Unit,
+    onOpenLayoutEditor: () -> Unit,
     onClose: () -> Unit
 ) {
     val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
@@ -62,6 +63,20 @@ fun SettingsDialog(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onOpenLayoutEditor,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLightTheme) Color(0xFFDCE3ED) else Color(0xFF2E4A66),
+                        contentColor = txt
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Редактор раскладки", style = MaterialTheme.typography.titleMedium)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = onClose,

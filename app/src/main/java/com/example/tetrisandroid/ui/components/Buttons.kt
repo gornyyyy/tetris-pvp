@@ -17,10 +17,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @Composable
 fun StartButton(buttonColor: Color, textColor: Color, onClick: () -> Unit) {
@@ -64,11 +65,13 @@ fun ActionButton(
     buttonColor: Color,
     buttonPressed: Color,
     textColor: Color,
+    buttonWidth: Dp = 84.dp,
+    buttonHeight: Dp = 72.dp,
     onPress: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var pressJob by remember { mutableStateOf<Job?>(null) }
-    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()          // <-- CoroutineScope
 
     val bg = when {
         !enabled -> buttonColor.copy(alpha = 0.4f)
@@ -79,8 +82,8 @@ fun ActionButton(
 
     Box(
         modifier = Modifier
-            .width(84.dp)
-            .height(72.dp)
+            .width(buttonWidth)
+            .height(buttonHeight)
             .background(bg, RoundedCornerShape(16.dp))
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
@@ -89,13 +92,15 @@ fun ActionButton(
                         awaitFirstDown()
                         isPressed = true
                         onPress()
-                        pressJob = scope.launch {
+
+                        pressJob = scope.launch {           // <-- scope.launch
                             delay(200)
                             while (isPressed) {
                                 onPress()
                                 delay(50)
                             }
                         }
+
                         waitForUpOrCancellation()
                         isPressed = false
                         pressJob?.cancel()
@@ -121,6 +126,8 @@ fun SimpleButton(
     buttonColor: Color,
     buttonPressed: Color,
     textColor: Color,
+    buttonWidth: Dp = 84.dp,
+    buttonHeight: Dp = 72.dp,
     modifier: Modifier = Modifier,
     onPress: () -> Unit
 ) {
@@ -135,12 +142,13 @@ fun SimpleButton(
 
     Box(
         modifier = modifier
-            .width(84.dp)
-            .height(72.dp)
+            .width(buttonWidth)
+            .height(buttonHeight)
             .background(bg, RoundedCornerShape(16.dp))
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitPointerEventScope {
+                    isPressed = false
                     while (true) {
                         awaitFirstDown()
                         isPressed = true

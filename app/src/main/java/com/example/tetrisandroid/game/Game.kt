@@ -100,6 +100,7 @@ abstract class Game(
     }
 
     fun handleInput(action: PlayerAction) {
+
         if (!isRunning || isClearing) return
         var moved = false
 

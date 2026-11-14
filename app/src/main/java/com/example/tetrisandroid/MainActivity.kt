@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
+import com.example.tetrisandroid.data.LayoutSettings
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.ui.MenuScreen
 import com.example.tetrisandroid.ui.TetrisScreen
@@ -23,6 +24,7 @@ class MainActivity : ComponentActivity() {
 
         val statsStorage = GameStatsStorage(applicationContext)
         val gameSettings = GameSettings(applicationContext)
+        val layoutSettings = LayoutSettings(applicationContext)
 
         val versionChanged = versionHandler.isVersionChanged()
         val initialOldRecords = if (versionChanged) versionHandler.getLegacyRecords() else null
@@ -31,10 +33,14 @@ class MainActivity : ComponentActivity() {
             TetrisAndroidTheme {
                 var currentMode by remember { mutableStateOf<GameMode?>(null) }
                 var oldRecords by remember { mutableStateOf(initialOldRecords) }
+                var openLayoutEditorAfterMenu by remember { mutableStateOf(false) }
+
+                var gameSessionKey by remember { mutableStateOf(0) }
 
                 if (currentMode == null) {
                     MenuScreen(
                         gameSettings = gameSettings,
+                        layoutSettings = layoutSettings,
                         statsStorage = statsStorage,
                         oldRecordsOnUpdate = oldRecords,
                         onUpdateDialogClose = {
@@ -42,15 +48,28 @@ class MainActivity : ComponentActivity() {
                             versionHandler.clearLegacyRecords()
                             oldRecords = null
                         },
-                        onStartGame = { mode -> currentMode = mode }
+                        onStartGame = { mode ->
+                            currentMode = mode
+                            gameSessionKey++
+                        },
+                        initialShowLayoutEditor = openLayoutEditorAfterMenu,
+                        onLayoutEditorClosed = { openLayoutEditorAfterMenu = false }
                     )
                 } else {
-                    TetrisScreen(
-                        mode = currentMode!!,
-                        statsStorage = statsStorage,
-                        gameSettings = gameSettings,
-                        onExitToMenu = { currentMode = null }
-                    )
+                    key(gameSessionKey) {
+                        TetrisScreen(
+                            mode = currentMode!!,
+                            statsStorage = statsStorage,
+                            gameSettings = gameSettings,
+                            layoutSettings = layoutSettings,
+                            onExitToMenu = { currentMode = null },
+                            onRestart = { gameSessionKey++ },
+                            onOpenLayoutEditor = {
+                                currentMode = null
+                                openLayoutEditorAfterMenu = true
+                            }
+                        )
+                    }
                 }
             }
         }
