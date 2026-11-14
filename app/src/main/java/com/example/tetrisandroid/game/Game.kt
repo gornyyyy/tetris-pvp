@@ -89,11 +89,8 @@ abstract class Game(
         } else {
             if (now - lastFallTimer >= fallDelay) {
                 if (!board.tryMove(currentShape, 0, 1)) {
-                    if (lockResets == 0) {
-                        // Первое касание — новый lock
-                        lockTimer = now
-                        lockResets = 1
-                    }
+                    lockTimer = now
+                    if (lockResets == 0) lockResets = 1
                     isLocking = true
                 }
                 lastFallTimer = now

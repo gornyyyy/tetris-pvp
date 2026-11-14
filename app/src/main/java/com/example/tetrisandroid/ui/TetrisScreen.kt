@@ -62,9 +62,9 @@ fun TetrisScreen(
         }
     }
 
-    var isPaused by remember { mutableStateOf(false) }
+    var isPaused by remember(gameId) { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var showWinDialog by remember { mutableStateOf(false) }
+    var showWinDialog by remember(gameId) { mutableStateOf(false) }
 
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
@@ -80,7 +80,7 @@ fun TetrisScreen(
     val textColor = if (isLightTheme) LightText else DarkText
     val mutedColor = if (isLightTheme) LightMuted else DarkMuted
 
-    var uiState by remember {
+    var uiState by remember(gameId) {
         mutableStateOf(
             UiState(
                 grid = Array(24) { IntArray(10) },
@@ -276,7 +276,10 @@ fun TetrisScreen(
                 level = state.level,
                 bestLevel = bestLevel,
                 isLightTheme = isLightTheme,
-                onRestart = { gameId++; showWinDialog = false },
+                onRestart = {
+                    gameId++
+                    showWinDialog = false
+                    isPaused = false},
                 onExitToMenu = onExitToMenu,
                 onSettings = { showSettings = true }
             )

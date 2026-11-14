@@ -16,14 +16,14 @@ class ShapeI(x: Int, y: Int) : Shape(x, y) {
     }
     override fun getKickOffsets(fromRotation: Int, toRotation: Int): List<Pair<Int, Int>> {
         return when (fromRotation to toRotation) {
-            0 to 1 -> listOf(0 to 0, -2 to 0, 1 to 0, -2 to -1, 1 to 2)
-            1 to 0 -> listOf(0 to 0, 2 to 0, -1 to 0, 2 to 1, -1 to -2)
-            1 to 2 -> listOf(0 to 0, -1 to 0, 2 to 0, -1 to 2, 2 to -1)
-            2 to 1 -> listOf(0 to 0, 1 to 0, -2 to 0, 1 to -2, -2 to 1)
-            2 to 3 -> listOf(0 to 0, 2 to 0, -1 to 0, 2 to 1, -1 to -2)
-            3 to 2 -> listOf(0 to 0, -2 to 0, 1 to 0, -2 to -1, 1 to 2)
-            3 to 0 -> listOf(0 to 0, 1 to 0, -2 to 0, 1 to -2, -2 to 1)
-            0 to 3 -> listOf(0 to 0, -1 to 0, 2 to 0, -1 to 2, 2 to -1)
+            0 to 1 -> listOf(0 to 0, -2 to 0, 1 to 0, -2 to -1, 1 to 2, 0 to -2, 2 to -1)
+            1 to 0 -> listOf(0 to 0, 2 to 0, -1 to 0, 2 to 1, -1 to -2, 0 to -2, -2 to 1)
+            1 to 2 -> listOf(0 to 0, -1 to 0, 2 to 0, -1 to 2, 2 to -1, 0 to -2)
+            2 to 1 -> listOf(0 to 0, 1 to 0, -2 to 0, 1 to -2, -2 to 1, 0 to -2)
+            2 to 3 -> listOf(0 to 0, 2 to 0, -1 to 0, 2 to 1, -1 to -2, 0 to -2)
+            3 to 2 -> listOf(0 to 0, -2 to 0, 1 to 0, -2 to -1, 1 to 2, 0 to -2)
+            3 to 0 -> listOf(0 to 0, 1 to 0, -2 to 0, 1 to -2, -2 to 1, 0 to -2)
+            0 to 3 -> listOf(0 to 0, -1 to 0, 2 to 0, -1 to 2, 2 to -1, 0 to -2)
             else -> listOf(0 to 0)
         }
     }
