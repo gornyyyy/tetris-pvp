@@ -11,6 +11,7 @@ import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
+import com.example.tetrisandroid.data.ThemeType
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.ui.MenuScreen
 import com.example.tetrisandroid.ui.TetrisScreen
@@ -39,6 +40,8 @@ class MainActivity : ComponentActivity() {
                 var oldRecords by remember { mutableStateOf(initialOldRecords) }
                 var openLayoutEditorAfterMenu by remember { mutableStateOf(false) }
                 var gameSessionKey by remember { mutableStateOf(0) }
+
+                var themeType by remember { mutableStateOf(gameSettings.themeType) }
 
                 if (currentMode == null) {
                     MenuScreen(

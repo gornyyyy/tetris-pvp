@@ -11,12 +11,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.tetrisandroid.data.AudioSettings
+import com.example.tetrisandroid.data.ThemeType
 
 @Composable
 fun SettingsDialog(
     isLightTheme: Boolean,
     highlightColumn: Boolean,
     audioSettings: AudioSettings,
+    currentTheme: ThemeType,
+    onThemeChange: (ThemeType) -> Unit,
     onLightThemeChange: (Boolean) -> Unit,
     onHighlightChange: (Boolean) -> Unit,
     onAudioSettingsChanged: () -> Unit,
@@ -111,6 +114,8 @@ fun SettingsDialog(
     if (showThemeSelection) {
         ThemeSelectionDialog(
             isLightTheme = isLightTheme,
+            currentTheme = currentTheme,
+            onThemeChange = onThemeChange,
             onLightThemeChange = onLightThemeChange,
             onClose = { showThemeSelection = false }
         )

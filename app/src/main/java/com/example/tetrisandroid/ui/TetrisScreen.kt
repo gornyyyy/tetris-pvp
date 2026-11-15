@@ -19,6 +19,7 @@ import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
+import com.example.tetrisandroid.data.ThemeType
 import com.example.tetrisandroid.game.*
 import com.example.tetrisandroid.model.PlayerAction
 import com.example.tetrisandroid.ui.components.*
@@ -26,6 +27,15 @@ import com.example.tetrisandroid.ui.dialogs.*
 import com.example.tetrisandroid.ui.theme.*
 import kotlinx.coroutines.delay
 import java.util.Locale
+
+fun Color.darken(factor: Float): Color {
+    return Color(
+        red = red * factor,
+        green = green * factor,
+        blue = blue * factor,
+        alpha = alpha
+    )
+}
 
 data class UiState(
     val grid: Array<IntArray>,
@@ -104,6 +114,7 @@ fun TetrisScreen(
     var showWinDialog by remember { mutableStateOf(false) }
     var showGameOverDialog by remember { mutableStateOf(false) }
 
+    var themeType by remember { mutableStateOf(gameSettings.themeType) }
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
 
@@ -112,11 +123,22 @@ fun TetrisScreen(
 
     var statsSaved by remember { mutableStateOf(false) }
 
-    val background = if (isLightTheme) LightBackground else DarkBackground
-    val buttonColor = if (isLightTheme) LightButton else DarkButton
-    val buttonPressed = if (isLightTheme) LightButtonPressed else DarkButtonPressed
-    val textColor = if (isLightTheme) LightText else DarkText
-    val mutedColor = if (isLightTheme) LightMuted else DarkMuted
+    val isClassicOrModern = themeType == ThemeType.CLASSIC || themeType == ThemeType.MODERN
+
+    val baseBackground = if (isLightTheme) LightBackground else DarkBackground
+    val baseButtonColor = if (isLightTheme) LightButton else DarkButton
+    val baseButtonPressed = if (isLightTheme) LightButtonPressed else DarkButtonPressed
+    val baseTextColor = if (isLightTheme) LightText else DarkText
+    val baseMutedColor = if (isLightTheme) LightMuted else DarkMuted
+
+    val darkenFactor = if (isClassicOrModern) 0.7f else 1.0f
+
+    val background = baseBackground.darken(darkenFactor)
+    val buttonColor = baseButtonColor.darken(darkenFactor)
+    val buttonPressed = baseButtonPressed.darken(darkenFactor)
+
+    val textColor = baseTextColor
+    val mutedColor = baseMutedColor
 
     var uiState by remember {
         mutableStateOf(
@@ -237,6 +259,7 @@ fun TetrisScreen(
                     activeColorArgb = state.activeColorArgb,
                     highlightColumn = highlightColumn,
                     isLightTheme = isLightTheme,
+                    themeType = themeType,
                     clearingLines = state.clearingLines,
                     clearProgress = state.clearProgress
                 )
@@ -419,6 +442,8 @@ fun TetrisScreen(
             isLightTheme = isLightTheme,
             highlightColumn = highlightColumn,
             audioSettings = audioSettings,
+            currentTheme = themeType,
+            onThemeChange = { themeType = it; gameSettings.themeType = it },
             onLightThemeChange = { isLightTheme = it; gameSettings.isLightTheme = it },
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
             onAudioSettingsChanged = { audioManager.updateMusicVolume() },

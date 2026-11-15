@@ -61,7 +61,7 @@ class GameAudioManager(
         if (!audioSettings.isSoundEnabled || !audioSettings.isMusicEnabled) return 0f
         return audioSettings.masterVolume * audioSettings.musicVolume
     }
-    
+
     private fun playMusicTrack(resId: Int) {
         stopMusic()
         musicPlayer = MediaPlayer.create(context, resId)?.apply {
