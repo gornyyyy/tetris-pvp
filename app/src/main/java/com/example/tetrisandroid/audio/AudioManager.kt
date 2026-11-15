@@ -61,7 +61,7 @@ class GameAudioManager(
         if (!audioSettings.isSoundEnabled || !audioSettings.isMusicEnabled) return 0f
         return audioSettings.masterVolume * audioSettings.musicVolume
     }
-
+    
     private fun playMusicTrack(resId: Int) {
         stopMusic()
         musicPlayer = MediaPlayer.create(context, resId)?.apply {
@@ -112,7 +112,7 @@ class GameAudioManager(
         if (musicPlayer != null) {
             resumeMusic()
         } else {
-            currentGameTrack = getGameTrackForLevel(level)
+            currentGameTrack = chooseGameTrack(level)
             playMusicTrack(currentGameTrack)
         }
     }
@@ -123,15 +123,33 @@ class GameAudioManager(
 
     private fun playNextGameTrack() {
         if (isGameMusicMode) {
-            currentGameTrack = getGameTrackForLevel(currentGameLevel)
+            currentGameTrack = chooseGameTrack(currentGameLevel)
             playMusicTrack(currentGameTrack)
         }
     }
 
-    private fun getGameTrackForLevel(level: Int): Int {
-        return when (level) {
-            in 1..7 -> R.raw.music_playtime_slow
-            in 8..19 -> R.raw.music_playtime_mid
+    /**
+     * Выбирает трек для текущего уровня с учетом правил:
+     * - 5% шанс на menu (2+) или menu_2 (2-18)
+     * - Иначе: slow (1-7), mid (8-19), playtime (всегда)
+     */
+    private fun chooseGameTrack(level: Int): Int {
+        if (Random.nextInt(100) < 5) {
+            if (level in 2..18) {
+                return if (Random.nextBoolean()) R.raw.music_menu else R.raw.music_menu_2
+            } else if (level >= 2) {
+                return R.raw.music_menu
+            }
+        }
+
+        // Обычные треки
+        return when {
+            level in 1..7 -> {
+                if (Random.nextBoolean()) R.raw.music_playtime_slow else R.raw.music_playtime
+            }
+            level in 8..19 -> {
+                if (Random.nextBoolean()) R.raw.music_playtime_mid else R.raw.music_playtime
+            }
             else -> R.raw.music_playtime
         }
     }
@@ -155,7 +173,6 @@ class GameAudioManager(
         dialogPlayer = null
     }
 
-    // --- SFX (короткие) ---
     fun playSfx(soundId: Int) {
         val volume = calculateSfxVolume()
         if (volume > 0f) soundPool.play(soundId, volume, volume, 1, 0, 1f)

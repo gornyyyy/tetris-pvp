@@ -57,7 +57,7 @@ fun AudioSettingsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Только музыка", color = txt)
+                    Text("Музыка", color = txt)
                     Switch(checked = musicEnabled, enabled = soundEnabled, onCheckedChange = {
                         musicEnabled = it; audioSettings.isMusicEnabled = it; onVolumeChanged()
                     })
