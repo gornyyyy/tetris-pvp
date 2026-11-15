@@ -2,7 +2,9 @@ package com.example.tetrisandroid.ui.dialogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -35,18 +37,34 @@ fun UpdateDialog(
                 .background(bg, RoundedCornerShape(16.dp))
                 .padding(24.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 Text("Обновление!", color = txt, style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "А вот и новое обновление, добавилось всякого, \nнапример пара новых режимов",
+                    text = "Что нового:\n" +
+                            "• Добавлены скинчики \n" +
+                            "• Добавлены музыка и всякие приколюшки \n" +
+                            "• Исправлены старые штуки баги и тд\n" +
+                            "в целом и не важно что конкретно",
+                    color = txt,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Ну и как же без этого:",
                     color = txt,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text("Ваш лучший скор: ${oldRecords.score}", color = accent, style = MaterialTheme.typography.titleMedium)
                 Text("Ваш лучший лвл: ${oldRecords.level}", color = accent, style = MaterialTheme.typography.titleMedium)
@@ -54,7 +72,7 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "А теперь время ставить новые рекорды! Потому что старых больше нема)",
+                    text = "Ваши рекорды сохранены. Продолжайте играть и ставьте новые!",
                     color = txt,
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
@@ -70,7 +88,7 @@ fun UpdateDialog(
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) { Text("🤟🤟🤟", style = MaterialTheme.typography.titleLarge) }
+                ) { Text("Ряльна хайп 🤟", style = MaterialTheme.typography.titleMedium) }
             }
         }
     }

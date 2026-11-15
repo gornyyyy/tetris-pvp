@@ -161,7 +161,6 @@ fun MenuScreen(
             onClose = {
                 showUpdateDialog = false
                 onUpdateDialogClose()
-                statsStorage.resetAllStats()
             }
         )
     }

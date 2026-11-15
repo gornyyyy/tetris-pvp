@@ -11,7 +11,6 @@ import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
-import com.example.tetrisandroid.data.ThemeType
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.ui.MenuScreen
 import com.example.tetrisandroid.ui.TetrisScreen
@@ -31,7 +30,7 @@ class MainActivity : ComponentActivity() {
         val audioSettings = AudioSettings(applicationContext)
 
         val versionChanged = versionHandler.isVersionChanged()
-        val initialOldRecords = if (versionChanged) versionHandler.getLegacyRecords() else null
+        val initialOldRecords = if (versionChanged) versionHandler.getOldRecords(statsStorage) else null
 
         setContent {
             TetrisAndroidTheme {
@@ -40,8 +39,6 @@ class MainActivity : ComponentActivity() {
                 var oldRecords by remember { mutableStateOf(initialOldRecords) }
                 var openLayoutEditorAfterMenu by remember { mutableStateOf(false) }
                 var gameSessionKey by remember { mutableStateOf(0) }
-
-                var themeType by remember { mutableStateOf(gameSettings.themeType) }
 
                 if (currentMode == null) {
                     MenuScreen(
@@ -53,7 +50,6 @@ class MainActivity : ComponentActivity() {
                         oldRecordsOnUpdate = oldRecords,
                         onUpdateDialogClose = {
                             versionHandler.saveCurrentVersion()
-                            versionHandler.clearLegacyRecords()
                             oldRecords = null
                         },
                         onStartGame = { mode ->

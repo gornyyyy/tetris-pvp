@@ -25,29 +25,20 @@ class VersionHandler(context: Context) {
         }
     }
 
-    fun getLegacyRecords(): LegacyRecords? {
-        val hasScore = prefs.contains(LEGACY_BEST_SCORE)
-        val hasLevel = prefs.contains(LEGACY_BEST_LEVEL)
-        if (!hasScore && !hasLevel) return null
+    /**
+     * Возвращает текущие рекорды из GameStatsStorage.
+     * (Используется для отображения в диалоге обновления).
+     */
+    fun getOldRecords(statsStorage: GameStatsStorage): LegacyRecords {
         return LegacyRecords(
-            prefs.getInt(LEGACY_BEST_SCORE, 0),
-            prefs.getInt(LEGACY_BEST_LEVEL, 1)
+            score = statsStorage.getGlobalBestScore(),
+            level = statsStorage.getGlobalBestLevel()
         )
-    }
-
-    fun clearLegacyRecords() {
-        prefs.edit()
-            .remove(LEGACY_BEST_SCORE)
-            .remove(LEGACY_BEST_LEVEL)
-            .apply()
     }
 
     data class LegacyRecords(val score: Int, val level: Int)
 
     companion object {
         private const val KEY_APP_VERSION = "app_version"
-        private const val LEGACY_BEST_SCORE = "best_score"
-        private const val LEGACY_BEST_LEVEL = "best_level"
     }
-
 }

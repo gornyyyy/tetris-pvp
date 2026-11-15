@@ -22,6 +22,6 @@ class AudioSettings(context: Context) {
         set(value) = prefs.edit().putFloat("sfx_volume", value).apply()
 
     var musicVolume: Float
-        get() = prefs.getFloat("music_volume", 0.7f)
+        get() = prefs.getFloat("music_volume", 0.3f)
         set(value) = prefs.edit().putFloat("music_volume", value).apply()
 }

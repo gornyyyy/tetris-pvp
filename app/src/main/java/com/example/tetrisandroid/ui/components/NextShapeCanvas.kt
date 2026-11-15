@@ -39,7 +39,7 @@ fun NextShapeCanvas(
 
     val classicBitmaps = if (themeType == ThemeType.CLASSIC) {
         val paletteLevel = ((level - 1) % 15) + 1
-        
+
         val suffix = when (variantIndex) {
             0 -> 1
             1 -> 2
