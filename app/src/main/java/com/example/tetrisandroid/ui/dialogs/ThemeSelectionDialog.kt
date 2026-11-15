@@ -118,11 +118,11 @@ fun ThemeCard(
     val classicBitmaps = if (theme == ThemeType.CLASSIC) {
         listOf(
             ImageBitmap.imageResource(R.drawable.block_classic_lvl1_1),
-            ImageBitmap.imageResource(R.drawable.block_classic_lvl2_1),
-            ImageBitmap.imageResource(R.drawable.block_classic_lvl3_1),
+            ImageBitmap.imageResource(R.drawable.block_classic_lvl2_2),
+            ImageBitmap.imageResource(R.drawable.block_classic_lvl3_3),
             ImageBitmap.imageResource(R.drawable.block_classic_lvl4_1),
-            ImageBitmap.imageResource(R.drawable.block_classic_lvl5_1),
-            ImageBitmap.imageResource(R.drawable.block_classic_lvl6_1),
+            ImageBitmap.imageResource(R.drawable.block_classic_lvl5_2),
+            ImageBitmap.imageResource(R.drawable.block_classic_lvl6_3),
             ImageBitmap.imageResource(R.drawable.block_classic_lvl7_1)
         ).shuffled()
     } else emptyList()

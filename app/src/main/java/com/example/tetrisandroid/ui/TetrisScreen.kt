@@ -222,6 +222,7 @@ fun TetrisScreen(
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         audioManager.pauseMusic()
+        audioManager.stopDialogSound()
         if (!isPaused && uiState.isRunning) isPaused = true
     }
 

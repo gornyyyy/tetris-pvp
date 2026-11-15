@@ -28,7 +28,7 @@ fun NextShapeCanvas(
     isLightTheme: Boolean,
     themeType: ThemeType,
     level: Int,
-    variantIndex: Int, // <-- добавили вариант для Classic
+    variantIndex: Int,
     canvasSize: Dp = 136.dp
 ) {
     val bg = if (isLightTheme) Color(0xFFF9FBFF) else Color(0xFF0D1B2A)
@@ -36,27 +36,94 @@ fun NextShapeCanvas(
 
     val canvasHeight = canvasSize * 0.55f
 
-    // --- Картинки для Classic ---
+
     val classicBitmaps = if (themeType == ThemeType.CLASSIC) {
         val paletteLevel = ((level - 1) % 15) + 1
-        val resId = when (paletteLevel) {
-            1 -> R.drawable.block_classic_lvl1_1
-            2 -> R.drawable.block_classic_lvl2_1
-            3 -> R.drawable.block_classic_lvl3_1
-            4 -> R.drawable.block_classic_lvl4_1
-            5 -> R.drawable.block_classic_lvl5_1
-            6 -> R.drawable.block_classic_lvl6_1
-            7 -> R.drawable.block_classic_lvl7_1
-            8 -> R.drawable.block_classic_lvl8_1
-            9 -> R.drawable.block_classic_lvl9_1
-            10 -> R.drawable.block_classic_lvl10_1
-            11 -> R.drawable.block_classic_lvl11_1
-            12 -> R.drawable.block_classic_lvl12_1
-            13 -> R.drawable.block_classic_lvl13_1
-            14 -> R.drawable.block_classic_lvl14_1
-            else -> R.drawable.block_classic_lvl15_1
+        
+        val suffix = when (variantIndex) {
+            0 -> 1
+            1 -> 2
+            else -> 3
         }
-        // Можно подставлять вариант, но для превью используем 1-й
+
+        val resId = when (paletteLevel) {
+            1 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl1_1
+                2 -> R.drawable.block_classic_lvl1_2
+                else -> R.drawable.block_classic_lvl1_3
+            }
+            2 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl2_1
+                2 -> R.drawable.block_classic_lvl2_2
+                else -> R.drawable.block_classic_lvl2_3
+            }
+            3 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl3_1
+                2 -> R.drawable.block_classic_lvl3_2
+                else -> R.drawable.block_classic_lvl3_3
+            }
+            4 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl4_1
+                2 -> R.drawable.block_classic_lvl4_2
+                else -> R.drawable.block_classic_lvl4_3
+            }
+            5 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl5_1
+                2 -> R.drawable.block_classic_lvl5_2
+                else -> R.drawable.block_classic_lvl5_3
+            }
+            6 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl6_1
+                2 -> R.drawable.block_classic_lvl6_2
+                else -> R.drawable.block_classic_lvl6_3
+            }
+            7 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl7_1
+                2 -> R.drawable.block_classic_lvl7_2
+                else -> R.drawable.block_classic_lvl7_3
+            }
+            8 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl8_1
+                2 -> R.drawable.block_classic_lvl8_2
+                else -> R.drawable.block_classic_lvl8_3
+            }
+            9 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl9_1
+                2 -> R.drawable.block_classic_lvl9_2
+                else -> R.drawable.block_classic_lvl9_3
+            }
+            10 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl10_1
+                2 -> R.drawable.block_classic_lvl10_2
+                else -> R.drawable.block_classic_lvl10_3
+            }
+            11 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl11_1
+                2 -> R.drawable.block_classic_lvl11_2
+                else -> R.drawable.block_classic_lvl11_3
+            }
+            12 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl12_1
+                2 -> R.drawable.block_classic_lvl12_2
+                else -> R.drawable.block_classic_lvl12_3
+            }
+            13 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl13_1
+                2 -> R.drawable.block_classic_lvl13_2
+                else -> R.drawable.block_classic_lvl13_3
+            }
+            14 -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl14_1
+                2 -> R.drawable.block_classic_lvl14_2
+                else -> R.drawable.block_classic_lvl14_3
+            }
+            else -> when (suffix) {
+                1 -> R.drawable.block_classic_lvl15_1
+                2 -> R.drawable.block_classic_lvl15_2
+                else -> R.drawable.block_classic_lvl15_3
+            }
+        }
+
         ImageBitmap.imageResource(resId)
     } else null
 

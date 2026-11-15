@@ -42,7 +42,7 @@ fun MenuScreen(
 ) {
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
-    var selectedMode by remember { mutableStateOf(GameMode.CLASSIC) }
+    var selectedMode by remember { mutableStateOf(gameSettings.lastGameMode) }
     var showSettings by remember { mutableStateOf(false) }
     var showLayoutEditor by remember { mutableStateOf(initialShowLayoutEditor) }
     var showUpdateDialog by remember { mutableStateOf(oldRecordsOnUpdate != null) }
@@ -53,6 +53,7 @@ fun MenuScreen(
     val mutedColor = if (isLightTheme) LightMuted else DarkMuted
 
     var themeType by remember { mutableStateOf(gameSettings.themeType) }
+
 
     LaunchedEffect(Unit) {
         audioManager.playRandomMenuMusic()
@@ -65,6 +66,7 @@ fun MenuScreen(
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        audioManager.stopDialogSound()
         audioManager.stopMusic()
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -89,7 +91,9 @@ fun MenuScreen(
 
         ModeSelector(
             selectedMode = selectedMode,
-            onModeSelected = { selectedMode = it },
+            onModeSelected = {
+                selectedMode = it
+                gameSettings.lastGameMode = it},
             buttonColor = buttonColor,
             textColor = textColor,
             mutedColor = mutedColor,

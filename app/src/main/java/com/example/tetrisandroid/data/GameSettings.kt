@@ -1,6 +1,7 @@
 package com.example.tetrisandroid.data
 
 import android.content.Context
+import com.example.tetrisandroid.game.GameMode
 
 enum class ThemeType(val id: String, val displayName: String) {
     BASIC("basic", "Basic"),
@@ -11,6 +12,10 @@ enum class ThemeType(val id: String, val displayName: String) {
 class GameSettings(context: Context) {
     private val prefs = context.getSharedPreferences("tetris_prefs", Context.MODE_PRIVATE)
 
+    var lastGameMode: GameMode
+        get() = GameMode.values().firstOrNull { it.id == prefs.getString("last_game_mode", "classic") } ?: GameMode.CLASSIC
+        set(value) = prefs.edit().putString("last_game_mode", value.id).apply()
+
     var isLightTheme: Boolean
         get() = prefs.getBoolean("light_theme", false)
         set(value) = prefs.edit().putBoolean("light_theme", value).apply()
@@ -20,6 +25,6 @@ class GameSettings(context: Context) {
         set(value) = prefs.edit().putBoolean("highlight_column", value).apply()
 
     var themeType: ThemeType
-        get() = ThemeType.values().firstOrNull { it.id == prefs.getString("theme_type", "basic") } ?: ThemeType.BASIC
+        get() = ThemeType.values().firstOrNull { it.id == prefs.getString("theme_type", "modern") } ?: ThemeType.BASIC
         set(value) = prefs.edit().putString("theme_type", value.id).apply()
 }

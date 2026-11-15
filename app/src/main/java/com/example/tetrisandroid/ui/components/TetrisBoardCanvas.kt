@@ -41,6 +41,14 @@ fun TetrisBoardCanvas(
 
     val ghostAlpha = 0.3f
 
+    val wallClassicBitmap = if (themeType == ThemeType.CLASSIC) {
+        ImageBitmap.imageResource(R.drawable.block_wall_classic)
+    } else null
+
+    val wallModernBitmap = if (themeType == ThemeType.MODERN) {
+        ImageBitmap.imageResource(R.drawable.block_wall_modern)
+    } else null
+
     // Classic: картинки по уровню
     val classicBitmaps = if (themeType == ThemeType.CLASSIC) {
         val paletteLevel = ((level - 1) % 15) + 1
@@ -213,7 +221,23 @@ fun TetrisBoardCanvas(
                             drawRect(lockedColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
                         }
                     }
-                    3 -> drawRect(wallColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
+                    3 -> {
+                        if (themeType == ThemeType.CLASSIC && wallClassicBitmap != null) {
+                            drawImage(
+                                image = wallClassicBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
+                            )
+                        } else if (themeType == ThemeType.MODERN && wallModernBitmap != null) {
+                            drawImage(
+                                image = wallModernBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
+                            )
+                        } else {
+                            drawRect(wallColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
+                        }
+                    }
                     else -> Unit
                 }
             }
