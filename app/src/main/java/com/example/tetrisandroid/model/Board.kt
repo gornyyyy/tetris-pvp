@@ -9,6 +9,8 @@ class Board {
     }
 
     val grid: Array<IntArray> = Array(TOTAL_HEIGHT) { IntArray(WIDTH) }
+    // Хранит variantIndex (0..2) для Classic ИЛИ colorArgb для Modern
+    val variantGrid: Array<IntArray> = Array(TOTAL_HEIGHT) { IntArray(WIDTH) }
 
     init {
         for (c in 0 until WIDTH) {
@@ -67,11 +69,19 @@ class Board {
         return false
     }
 
-    fun lockPiece(shape: Shape): Boolean {
+    /**
+     * @param saveColorAsArgb true — сохраняем colorArgb (Modern), false — сохраняем variantIndex (Classic)
+     */
+    fun lockPiece(shape: Shape, saveColorAsArgb: Boolean): Boolean {
         var overflow = false
         for (block in shape.getBlocks()) {
             if (block.y >= 0 && block.y < TOTAL_HEIGHT && block.x >= 0 && block.x < WIDTH) {
                 grid[block.y][block.x] = 2
+                variantGrid[block.y][block.x] = if (saveColorAsArgb) {
+                    shape.colorArgb
+                } else {
+                    shape.variantIndex
+                }
                 if (block.y < HIDDEN_ROWS) overflow = true
             }
         }
@@ -87,7 +97,7 @@ class Board {
     }
 
     fun spawnShape(): Shape {
-        return when ((0..6).random()) {
+        val shape = when ((0..6).random()) {
             0 -> ShapeI(3, 0)
             1 -> ShapeO(4, 0)
             2 -> ShapeT(3, 0)
@@ -96,26 +106,24 @@ class Board {
             5 -> ShapeJ(3, 0)
             else -> ShapeL(3, 0)
         }
+        shape.variantIndex = when (shape) {
+            is ShapeJ, is ShapeZ -> 0
+            is ShapeL, is ShapeS -> 1
+            else -> 2
+        }
+        return shape
     }
 
     fun revealShape(shape: Shape) {
         if (!isValidPosition(shape)) return
-
         val blocks = shape.getBlocks()
         if (blocks.isEmpty()) return
-
         val lowestY = blocks.maxOf { it.y }
         val shift = HIDDEN_ROWS - lowestY
         if (shift <= 0) return
-
         val originalY = shape.y
         shape.y = originalY + shift
-
-        if (isValidPosition(shape)) {
-            return
-        }
-
-        // столкновение — откатываем полностью
+        if (isValidPosition(shape)) return
         shape.y = originalY
     }
 
@@ -127,6 +135,7 @@ class Board {
 
     fun clearFullLines(): Int {
         val remainingRows = mutableListOf<IntArray>()
+        val remainingVariants = mutableListOf<IntArray>()
         var cleared = 0
 
         for (r in 0 until TOTAL_HEIGHT - 1) {
@@ -135,6 +144,7 @@ class Board {
                 cleared++
             } else {
                 remainingRows.add(grid[r].clone())
+                remainingVariants.add(variantGrid[r].clone())
             }
         }
 
@@ -143,9 +153,11 @@ class Board {
         val emptyCount = TOTAL_HEIGHT - 1 - remainingRows.size
         for (r in 0 until emptyCount) {
             grid[r] = IntArray(WIDTH)
+            variantGrid[r] = IntArray(WIDTH)
         }
         for (i in remainingRows.indices) {
             grid[emptyCount + i] = remainingRows[i]
+            variantGrid[emptyCount + i] = remainingVariants[i]
         }
 
         return cleared

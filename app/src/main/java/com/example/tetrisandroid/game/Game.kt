@@ -49,9 +49,12 @@ abstract class Game(
     private val clearAnimDurationMs = 300L
 
     val grid: Array<IntArray> get() = board.grid
+    val variantGrid: Array<IntArray> get() = board.variantGrid
 
     abstract val modeName: String
     abstract val modeId: String
+
+    var saveAsColor: Boolean = true
 
     protected abstract fun calculateFallDelay(level: Int): Long
 
@@ -110,7 +113,6 @@ abstract class Game(
             PlayerAction.MOVE_RIGHT -> moved = board.tryMove(currentShape, 1, 0)
             PlayerAction.MOVE_DOWN  -> {
                 if (board.tryMove(currentShape, 0, 1)) {
-                    // Фигура упала вниз — сбрасываем счётчик, потому что она «спустилась»
                     isLocking = false
                     lockResets = 0
                     moved = true
@@ -131,7 +133,6 @@ abstract class Game(
                 lockResets++
                 lockTimer = System.currentTimeMillis()
             } else {
-                // Только что коснулась дна
                 isLocking = true
                 lockTimer = System.currentTimeMillis()
                 lockResets = 1
@@ -148,7 +149,7 @@ abstract class Game(
     }
 
     private fun lockAndCheck() {
-        val overflow = board.lockPiece(currentShape)
+        val overflow = board.lockPiece(currentShape, saveAsColor)
         val fullLines = board.findFullLines()
 
         isLocking = false

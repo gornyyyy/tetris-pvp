@@ -243,6 +243,10 @@ fun TetrisScreen(
         }
     }
 
+    LaunchedEffect(themeType) {
+        game.saveAsColor = (themeType == ThemeType.MODERN)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -255,11 +259,14 @@ fun TetrisScreen(
             Box(modifier = Modifier.weight(fieldWeight).fillMaxHeight()) {
                 TetrisBoardCanvas(
                     grid = state.grid,
+                    variantGrid = game.variantGrid,
                     activeBlocks = if (state.clearingLines.isEmpty()) state.activeBlocks else emptyList(),
                     activeColorArgb = state.activeColorArgb,
+                    activeVariantIndex = game.currentShape.variantIndex,
                     highlightColumn = highlightColumn,
                     isLightTheme = isLightTheme,
                     themeType = themeType,
+                    level = state.level,
                     clearingLines = state.clearingLines,
                     clearProgress = state.clearProgress
                 )
@@ -299,6 +306,9 @@ fun TetrisScreen(
                 NextShapeCanvas(
                     nextBlocks = state.nextBlocks,
                     colorArgb = state.nextColorArgb,
+                    themeType = themeType,
+                    level = state.level,
+                    variantIndex = game.nextShape.variantIndex,
                     isLightTheme = isLightTheme,
                     canvasSize = nextSize
                 )

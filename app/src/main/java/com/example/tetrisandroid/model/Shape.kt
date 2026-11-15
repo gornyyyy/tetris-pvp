@@ -6,6 +6,7 @@ abstract class Shape(
     var x: Int, var y: Int
 ) {
     abstract val colorArgb: Int
+    var variantIndex: Int = 0
     var matrix: Array<IntArray> = emptyArray()
 
     var rotationIndex: Int = 0
