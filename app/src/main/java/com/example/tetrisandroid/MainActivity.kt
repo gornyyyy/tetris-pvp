@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
+import com.example.tetrisandroid.audio.GameAudioManager
+import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
@@ -25,16 +27,17 @@ class MainActivity : ComponentActivity() {
         val statsStorage = GameStatsStorage(applicationContext)
         val gameSettings = GameSettings(applicationContext)
         val layoutSettings = LayoutSettings(applicationContext)
+        val audioSettings = AudioSettings(applicationContext)
 
         val versionChanged = versionHandler.isVersionChanged()
         val initialOldRecords = if (versionChanged) versionHandler.getLegacyRecords() else null
 
         setContent {
             TetrisAndroidTheme {
+                val audioManager = remember { GameAudioManager(applicationContext, audioSettings) }
                 var currentMode by remember { mutableStateOf<GameMode?>(null) }
                 var oldRecords by remember { mutableStateOf(initialOldRecords) }
                 var openLayoutEditorAfterMenu by remember { mutableStateOf(false) }
-
                 var gameSessionKey by remember { mutableStateOf(0) }
 
                 if (currentMode == null) {
@@ -42,6 +45,8 @@ class MainActivity : ComponentActivity() {
                         gameSettings = gameSettings,
                         layoutSettings = layoutSettings,
                         statsStorage = statsStorage,
+                        audioSettings = audioSettings,
+                        audioManager = audioManager,
                         oldRecordsOnUpdate = oldRecords,
                         onUpdateDialogClose = {
                             versionHandler.saveCurrentVersion()
@@ -62,6 +67,8 @@ class MainActivity : ComponentActivity() {
                             statsStorage = statsStorage,
                             gameSettings = gameSettings,
                             layoutSettings = layoutSettings,
+                            audioSettings = audioSettings,
+                            audioManager = audioManager,
                             onExitToMenu = { currentMode = null },
                             onRestart = { gameSessionKey++ },
                             onOpenLayoutEditor = {

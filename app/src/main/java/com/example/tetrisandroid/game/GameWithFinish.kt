@@ -5,8 +5,9 @@ import kotlin.math.pow
 class GameWithFinish(
     onUpdate: () -> Unit,
     onGameOver: (Int) -> Unit,
+    private val onLineClear: (Int) -> Unit = {},
     private val targetLines: Int = 160
-) : Game(onUpdate, onGameOver) {
+) : Game(onUpdate, onGameOver, onLineClear) {
 
     override val modeName = "Finish"
     override val modeId = "finish"

@@ -5,8 +5,9 @@ import kotlin.math.pow
 class GameCompetitive(
     onUpdate: () -> Unit,
     onGameOver: (Int) -> Unit,
-    private val onAttack: (lines: Int) -> Unit = {}
-) : Game(onUpdate, onGameOver) {
+    private val onAttack: (lines: Int) -> Unit = {},
+    private val onLineClear: (Int) -> Unit = {}
+) : Game(onUpdate, onGameOver, onLineClear) {
 
     override val modeName = "Competitive"
     override val modeId = "competitive"

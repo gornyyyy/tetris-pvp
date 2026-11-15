@@ -11,6 +11,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.example.tetrisandroid.audio.GameAudioManager
+import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
@@ -28,6 +32,8 @@ fun MenuScreen(
     gameSettings: GameSettings,
     layoutSettings: LayoutSettings,
     statsStorage: GameStatsStorage,
+    audioSettings: AudioSettings,
+    audioManager: GameAudioManager,
     oldRecordsOnUpdate: VersionHandler.LegacyRecords?,
     onUpdateDialogClose: () -> Unit,
     onStartGame: (GameMode) -> Unit,
@@ -45,6 +51,23 @@ fun MenuScreen(
     val buttonColor = if (isLightTheme) LightButton else DarkButton
     val textColor = if (isLightTheme) LightText else DarkText
     val mutedColor = if (isLightTheme) LightMuted else DarkMuted
+
+    LaunchedEffect(Unit) {
+        audioManager.playRandomMenuMusic()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioManager.stopMusic()
+        }
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        audioManager.stopMusic()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        audioManager.playRandomMenuMusic()
+    }
 
     Column(
         modifier = Modifier
@@ -73,7 +96,10 @@ fun MenuScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        StartButton(buttonColor, textColor) { onStartGame(selectedMode) }
+        StartButton(buttonColor, textColor) {
+            audioManager.stopMusic()
+            onStartGame(selectedMode)
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -97,8 +123,10 @@ fun MenuScreen(
         SettingsDialog(
             isLightTheme = isLightTheme,
             highlightColumn = highlightColumn,
+            audioSettings = audioSettings,
             onLightThemeChange = { isLightTheme = it; gameSettings.isLightTheme = it },
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
+            onAudioSettingsChanged = { audioManager.updateMusicVolume() },
             onOpenLayoutEditor = {
                 showSettings = false
                 showLayoutEditor = true

@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import com.example.tetrisandroid.R
+import com.example.tetrisandroid.audio.GameAudioManager
+import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
@@ -35,7 +37,8 @@ data class UiState(
     val level: Int,
     val isRunning: Boolean,
     val clearingLines: List<Int> = emptyList(),
-    val clearProgress: Float = 0f
+    val clearProgress: Float = 0f,
+    val linesClearedTotal: Int = 0
 )
 
 fun formatScore(score: Int): String {
@@ -54,6 +57,8 @@ fun TetrisScreen(
     statsStorage: GameStatsStorage,
     gameSettings: GameSettings,
     layoutSettings: LayoutSettings,
+    audioSettings: AudioSettings,
+    audioManager: GameAudioManager,
     onExitToMenu: () -> Unit,
     onRestart: () -> Unit,
     onOpenLayoutEditor: () -> Unit
@@ -65,16 +70,30 @@ fun TetrisScreen(
     val btnWidth = layoutSettings.actionButtonWidth.dp
     val btnHeight = layoutSettings.actionButtonHeight.dp
     val hPad = layoutSettings.horizontalPadding.dp
-
-    // Размер NEXT фигуры масштабируется от topWeight (базовый — 136 dp при topWeight = 0.75f)
     val nextSize = (136f * (topWeight / 0.75f)).coerceIn(80f, 160f).dp
 
     val game = remember {
         when (mode) {
-            GameMode.CLASSIC -> GameClassic({}, {})
-            GameMode.FAST -> GameFast({}, {})
-            GameMode.FINISH -> GameWithFinish({}, {})
-            GameMode.COMPETITIVE -> GameCompetitive({}, {})
+            GameMode.CLASSIC -> GameClassic(
+                onUpdate = { },
+                onGameOver = { },
+                onLineClear = { lines -> audioManager.playLineClear(lines) }
+            )
+            GameMode.FAST -> GameFast(
+                onUpdate = { },
+                onGameOver = { },
+                onLineClear = { lines -> audioManager.playLineClear(lines) }
+            )
+            GameMode.FINISH -> GameWithFinish(
+                onUpdate = { },
+                onGameOver = { },
+                onLineClear = { lines -> audioManager.playLineClear(lines) }
+            )
+            GameMode.COMPETITIVE -> GameCompetitive(
+                onUpdate = { },
+                onGameOver = { },
+                onLineClear = { lines -> audioManager.playLineClear(lines) }
+            )
         }
     }
 
@@ -83,6 +102,7 @@ fun TetrisScreen(
     var openedSettingsFromPause by remember { mutableStateOf(false) }
     var showLeavePauseConfirm by remember { mutableStateOf(false) }
     var showWinDialog by remember { mutableStateOf(false) }
+    var showGameOverDialog by remember { mutableStateOf(false) }
 
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
     var highlightColumn by remember { mutableStateOf(gameSettings.highlightColumn) }
@@ -106,10 +126,12 @@ fun TetrisScreen(
                 activeColorArgb = 0xFF00FFFF.toInt(),
                 nextBlocks = emptyList(),
                 nextColorArgb = 0xFF00FFFF.toInt(),
-                score = 0, level = 1, isRunning = true
+                score = 0, level = 1, isRunning = true, linesClearedTotal = 0
             )
         )
     }
+
+    val state = uiState
 
     fun refreshUi() {
         uiState = UiState(
@@ -122,27 +144,52 @@ fun TetrisScreen(
             level = game.level,
             isRunning = game.isRunning,
             clearingLines = game.clearingLines,
-            clearProgress = game.clearProgress
+            clearProgress = game.clearProgress,
+            linesClearedTotal = game.linesClearedTotal
         )
+
         if (!game.isRunning && !statsSaved) {
             statsSaved = true
             val won = (game as? GameWithFinish)?.isWon == true
-            statsStorage.saveResult(
-                modeId = mode.id,
-                score = game.score,
-                level = game.level,
-                lines = game.linesClearedTotal,
-                won = won
-            )
+            val isScoreHighScore = game.score > statsStorage.getBestScore(mode.id)
+            val isLevelHighScore = game.level > statsStorage.getBestLevel(mode.id)
+            val isAnyHighScore = isScoreHighScore || isLevelHighScore
+
+            statsStorage.saveResult(mode.id, game.score, game.level, game.linesClearedTotal, won)
             bestScore = statsStorage.getBestScore(mode.id)
             bestLevel = statsStorage.getBestLevel(mode.id)
-            if (won) showWinDialog = true
+
+            audioManager.stopMusic()
+
+            if (won) {
+                audioManager.playWinSfx()
+            } else {
+                audioManager.playLoseSfx()
+            }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        audioManager.updateGameLevel(uiState.level)
+    }
+
+    LaunchedEffect(uiState.level) {
+        if (uiState.level > 1) {
+            audioManager.playLevelUp()
+        }
+        audioManager.updateGameLevel(uiState.level)
+    }
+
+    DisposableEffect(isPaused) {
+        if (isPaused) audioManager.pauseMusic()
+        else audioManager.startGameMusic(game.level)
+        onDispose { }
     }
 
     LaunchedEffect(isPaused) {
         if (isPaused) return@LaunchedEffect
         refreshUi()
+
         while (game.isRunning) {
             delay(16)
             game.tick()
@@ -151,10 +198,27 @@ fun TetrisScreen(
         refreshUi()
     }
 
-    val state = uiState
-
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        if (!isPaused && state.isRunning) isPaused = true
+        audioManager.pauseMusic()
+        if (!isPaused && uiState.isRunning) isPaused = true
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (!isPaused && uiState.isRunning) audioManager.startGameMusic(game.level)
+    }
+
+    LaunchedEffect(uiState.isRunning) {
+        if (!uiState.isRunning) {
+            delay(2500)
+            if ((game as? GameWithFinish)?.isWon == true) {
+                showWinDialog = true
+                audioManager.playDialogMusic(isWin = true, isHighScore = true)
+            } else {
+                val isAnyHighScore = state.score > bestScore || state.level > bestLevel
+                showGameOverDialog = true
+                audioManager.playDialogMusic(isWin = false, isHighScore = isAnyHighScore)
+            }
+        }
     }
 
     Column(
@@ -166,9 +230,7 @@ fun TetrisScreen(
             .padding(horizontal = hPad)
     ) {
         Row(modifier = Modifier.weight(topWeight).fillMaxWidth()) {
-            Box(
-                modifier = Modifier.weight(fieldWeight).fillMaxHeight()
-            ) {
+            Box(modifier = Modifier.weight(fieldWeight).fillMaxHeight()) {
                 TetrisBoardCanvas(
                     grid = state.grid,
                     activeBlocks = if (state.clearingLines.isEmpty()) state.activeBlocks else emptyList(),
@@ -254,9 +316,7 @@ fun TetrisScreen(
                         textColor = textColor,
                         buttonWidth = btnWidth,
                         buttonHeight = btnHeight
-                    ) {
-                        game.handleInput(PlayerAction.MOVE_LEFT); refreshUi()
-                    }
+                    ) { game.handleInput(PlayerAction.MOVE_LEFT); refreshUi() }
                     Spacer(modifier = Modifier.width(8.dp))
                     ActionButton(
                         iconRes = R.drawable.ic_right_arrow,
@@ -267,9 +327,7 @@ fun TetrisScreen(
                         textColor = textColor,
                         buttonWidth = btnWidth,
                         buttonHeight = btnHeight
-                    ) {
-                        game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi()
-                    }
+                    ) { game.handleInput(PlayerAction.MOVE_RIGHT); refreshUi() }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 ActionButton(
@@ -281,9 +339,7 @@ fun TetrisScreen(
                     textColor = textColor,
                     buttonWidth = btnWidth,
                     buttonHeight = btnHeight
-                ) {
-                    game.handleInput(PlayerAction.MOVE_DOWN); refreshUi()
-                }
+                ) { game.handleInput(PlayerAction.MOVE_DOWN); refreshUi() }
             }
             Column(
                 modifier = Modifier.align(Alignment.CenterEnd),
@@ -298,9 +354,7 @@ fun TetrisScreen(
                     textColor = textColor,
                     buttonWidth = btnWidth,
                     buttonHeight = btnHeight
-                ) {
-                    game.handleInput(PlayerAction.ROTATE); refreshUi()
-                }
+                ) { game.handleInput(PlayerAction.ROTATE); refreshUi() }
                 Spacer(modifier = Modifier.height(8.dp))
                 SimpleButton(
                     iconRes = R.drawable.hd_arrow,
@@ -311,90 +365,77 @@ fun TetrisScreen(
                     textColor = textColor,
                     buttonWidth = btnWidth,
                     buttonHeight = btnHeight
-                ) {
-                    game.handleInput(PlayerAction.HARD_DROP); refreshUi()
-                }
+                ) { game.handleInput(PlayerAction.HARD_DROP); refreshUi() }
             }
         }
     }
 
-    // --- Pause ---
     if (isPaused) {
         PauseDialog(
-            bestScore = bestScore,
-            bestLevel = bestLevel,
-            currentScore = state.score,
-            currentLevel = state.level,
+            bestScore = bestScore, bestLevel = bestLevel,
+            currentScore = state.score, currentLevel = state.level,
             isLightTheme = isLightTheme,
             onResume = { isPaused = false },
             onRestart = { onRestart() },
-            onSettings = {
-                openedSettingsFromPause = true
-                showSettings = true
-            },
+            onSettings = { openedSettingsFromPause = true; showSettings = true },
             onExitToMenu = onExitToMenu
         )
     }
 
-    // --- Game Over / Win ---
-    if (!state.isRunning) {
-        if (showWinDialog && game is GameWithFinish) {
-            WinDialog(
-                score = state.score,
-                level = state.level,
-                isLightTheme = isLightTheme,
-                onRestart = { onRestart() },
-                onExitToMenu = onExitToMenu
-            )
-        } else if (!showWinDialog) {
-            GameOverDialog(
-                score = state.score,
-                bestScore = bestScore,
-                level = state.level,
-                bestLevel = bestLevel,
-                isLightTheme = isLightTheme,
-                onRestart = { onRestart() },
-                onExitToMenu = onExitToMenu,
-                onSettings = {
-                    openedSettingsFromPause = false   // игра уже окончена
-                    showSettings = true
-                }
-            )
-        }
+    if (showGameOverDialog) {
+        GameOverDialog(
+            score = state.score, bestScore = bestScore,
+            level = state.level, bestLevel = bestLevel,
+            isLightTheme = isLightTheme,
+            onRestart = {
+                audioManager.stopDialogSound()
+                onRestart()
+            },
+            onExitToMenu = {
+                audioManager.stopDialogSound()
+                onExitToMenu()
+            },
+            onSettings = { openedSettingsFromPause = false; showSettings = true }
+        )
     }
 
-    // --- Настройки ---
+    if (showWinDialog) {
+        WinDialog(
+            score = state.score, level = state.level,
+            isLightTheme = isLightTheme,
+            onRestart = {
+                audioManager.stopDialogSound()
+                onRestart()
+            },
+            onExitToMenu = {
+                audioManager.stopDialogSound()
+                onExitToMenu()
+            }
+        )
+    }
+
     if (showSettings) {
         SettingsDialog(
             isLightTheme = isLightTheme,
             highlightColumn = highlightColumn,
+            audioSettings = audioSettings,
             onLightThemeChange = { isLightTheme = it; gameSettings.isLightTheme = it },
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
+            onAudioSettingsChanged = { audioManager.updateMusicVolume() },
             onOpenLayoutEditor = {
                 showSettings = false
-                if (openedSettingsFromPause) {
-                    showLeavePauseConfirm = true
-                } else {
-                    onOpenLayoutEditor()
-                }
+                if (openedSettingsFromPause) showLeavePauseConfirm = true
+                else onOpenLayoutEditor()
             },
             onClose = { showSettings = false }
         )
     }
 
-    // --- Подтверждение (только из паузы) ---
     if (showLeavePauseConfirm) {
         ConfirmLeavePauseDialog(
             isLightTheme = isLightTheme,
-            onConfirm = {
-                showLeavePauseConfirm = false
-                isPaused = false
-                onOpenLayoutEditor()
-            },
-            onDismiss = {
-                showLeavePauseConfirm = false
-                showSettings = true   // вернуться в настройки
-            }
+            onConfirm = { showLeavePauseConfirm = false; isPaused = false; onOpenLayoutEditor() },
+            onDismiss = { showLeavePauseConfirm = false; showSettings = true }
         )
     }
 }

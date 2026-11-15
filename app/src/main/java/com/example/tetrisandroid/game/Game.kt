@@ -5,7 +5,8 @@ import com.example.tetrisandroid.model.PlayerAction
 
 abstract class Game(
     private val onUpdate: () -> Unit,
-    private val onGameOver: (Int) -> Unit
+    private val onGameOver: (Int) -> Unit,
+    private val onLineClear: (Int) -> Unit = {}
 ) {
     protected val board = Board()
 
@@ -166,6 +167,9 @@ abstract class Game(
             isClearing = true
             clearProgress = 0f
             clearStartTime = System.currentTimeMillis()
+
+            onLineClear(fullLines.size)
+
             onUpdate()
         } else {
             spawnAfterLock()

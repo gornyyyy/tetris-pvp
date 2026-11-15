@@ -4,8 +4,9 @@ import kotlin.math.pow
 
 class GameFast(
     onUpdate: () -> Unit,
-    onGameOver: (Int) -> Unit
-) : Game(onUpdate, onGameOver) {
+    onGameOver: (Int) -> Unit,
+    private val onLineClear: (Int) -> Unit = {}
+) : Game(onUpdate, onGameOver, onLineClear) {
 
     override val modeName = "Fast"
     override val modeId = "fast"
