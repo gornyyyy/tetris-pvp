@@ -1,0 +1,20 @@
+{
+  "name": "tetris-pvp-server",
+  "version": "1.0.0",
+  "description": "PvP relay server for TetrisAndroid",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "tetris",
+    "pvp",
+    "websocket"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
+}
