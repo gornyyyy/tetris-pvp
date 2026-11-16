@@ -19,6 +19,8 @@ import com.example.tetrisandroid.pvp.PvpEvent
 import com.example.tetrisandroid.ui.dialogs.*
 import com.example.tetrisandroid.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 enum class PvpMatchStatus { PLAYING, WAITING_OPPONENT, WINNER, LOSER }
 
@@ -129,19 +131,27 @@ fun TetrisScreen(
     if (isPvp && roomId == null) {
         PvpRoomScreen(
             isLightTheme = isLightTheme,
-            onCreateRoom = { code, name ->
+            onCreateRoom = { code, name, level ->
                 playerName = name
                 pvpClient?.connect()
-                pvpClient?.createRoom(code, name)
+                pvpClient?.createRoom(code, name, level)
                 pendingRoomId = code
             },
             onJoinRoom = { code, name ->
                 playerName = name
+                pvpClient?.connect()
                 roomId = code
             },
             onBack = onExitToMenu
         )
         return
+    }
+
+    fun resolvePvpResultByScore() {
+        val iWin = uiState.score > opponentScore
+        pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
+        pvpResultVictory = iWin
+        showPvpResult = true
     }
 
     fun refreshUi() {
@@ -174,10 +184,7 @@ fun TetrisScreen(
 
                 when {
                     opponentGameOver -> {
-                        val iWin = uiState.score > opponentScore
-                        pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
-                        pvpResultVictory = iWin
-                        showPvpResult = true
+                        resolvePvpResultByScore()
                     }
                     opponentScore > uiState.score -> {
                         pvpMatchStatus = PvpMatchStatus.LOSER
@@ -193,12 +200,19 @@ fun TetrisScreen(
     }
 
     // --- Эффекты (музыка, таймер, диалоги) ---
-    LaunchedEffect(isPvp) {
+    LaunchedEffect(isPvp, roomId) {
         if (!isPvp || pvpClient == null || roomId == null) return@LaunchedEffect
-        pvpClient.joinRoom(roomId!!, playerName)
+        val id = roomId!!
+
+        launch {
+            pvpClient.connected.first { it }
+            pvpClient.joinRoom(id, playerName)
+        }
 
         pvpClient.events.collect { event ->
             when (event) {
+                PvpEvent.Connected -> Unit
+
                 is PvpEvent.RoomCreated -> {
                     pendingRoomId = null
                 }
@@ -208,8 +222,11 @@ fun TetrisScreen(
                     pvpStatus = if (event.opponentConnected) "Матч начался" else "Ожидание соперника…"
                 }
 
-                PvpEvent.Start -> {
+                is PvpEvent.Start -> {
                     pvpStatus = "Матч начался"
+                    audioManager.stopMusic()
+                    (game as? GameCompetitive)?.initMatch(event.seed, event.startLevel)
+                    refreshUi()
                     matchStarted = true
                     if (myGameOver) {
                         when {
@@ -234,6 +251,13 @@ fun TetrisScreen(
                     opponentLevel = event.level
                     opponentLines = event.lines
 
+                    if (!myGameOver && opponentGameOver) {
+                        pvpMatchStatus = if (uiState.score > opponentScore) {
+                            PvpMatchStatus.WINNER
+                        } else {
+                            PvpMatchStatus.PLAYING
+                        }
+                    }
                     if (myGameOver && pvpMatchStatus == PvpMatchStatus.WAITING_OPPONENT) {
                         if (event.score > uiState.score) {
                             pvpMatchStatus = PvpMatchStatus.LOSER
@@ -250,14 +274,16 @@ fun TetrisScreen(
 
                 PvpEvent.OpponentGameOver -> {
                     opponentGameOver = true
-                    pvpStatus = "Соперник проиграл"
+                    pvpStatus = "Соперник заполнил поле"
+
                     if (myGameOver) {
-                        val iWin = uiState.score > opponentScore
-                        pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
-                        pvpResultVictory = iWin
-                        showPvpResult = true
+                        resolvePvpResultByScore()
                     } else {
-                        pvpMatchStatus = PvpMatchStatus.WINNER
+                        pvpMatchStatus = when {
+                            uiState.score > opponentScore -> PvpMatchStatus.WINNER
+                            uiState.score < opponentScore -> PvpMatchStatus.PLAYING
+                            else -> PvpMatchStatus.PLAYING
+                        }
                     }
                 }
 
@@ -305,12 +331,24 @@ fun TetrisScreen(
     }
 
     LaunchedEffect(Unit) { audioManager.updateGameLevel(uiState.level) }
+    LaunchedEffect(showPvpResult) {
+        if (showPvpResult) {
+            audioManager.playDialogMusic(
+                isWin = pvpResultVictory,
+                isHighScore = state.score > bestScore || state.level > bestLevel
+            )
+        }
+    }
     LaunchedEffect(uiState.level) {
         if (uiState.level > 1) audioManager.playLevelUp()
         audioManager.updateGameLevel(uiState.level)
     }
-    DisposableEffect(isPaused) {
-        if (isPaused) audioManager.pauseMusic() else audioManager.startGameMusic(game.level)
+    DisposableEffect(isPaused, matchStarted) {
+        when {
+            !matchStarted -> Unit
+            isPaused -> audioManager.pauseMusic()
+            else -> audioManager.startGameMusic(game.level)
+        }
         onDispose { }
     }
     LaunchedEffect(isPaused,showPvpPause, matchStarted) {
@@ -323,10 +361,10 @@ fun TetrisScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         audioManager.pauseMusic()
         audioManager.stopDialogSound()
-        if (!isPaused && uiState.isRunning) isPaused = true
+        if (!isPaused && uiState.isRunning && (!isPvp || matchStarted)) isPaused = true
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (!isPaused && uiState.isRunning) audioManager.startGameMusic(game.level)
+        if (!isPaused && uiState.isRunning && matchStarted) audioManager.startGameMusic(game.level)
     }
     LaunchedEffect(uiState.isRunning && !isPvp) {
         if (!uiState.isRunning) {

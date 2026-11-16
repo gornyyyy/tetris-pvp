@@ -3,6 +3,7 @@ package com.example.tetrisandroid.pvp
 sealed class PvpEvent {
 
     data class RoomCreated(val roomId: String) : PvpEvent()
+    data object Connected : PvpEvent()
 
     /** Сервер подтвердил вход в комнату. */
     data class Joined(
@@ -13,7 +14,7 @@ sealed class PvpEvent {
     ) : PvpEvent()
 
     /** Оба игрока на месте — можно стартовать. */
-    object Start : PvpEvent()
+    data class Start(val seed: Long, val startLevel: Int) : PvpEvent()
 
     /** Очки соперника (для отображения разницы). */
     data class OpponentScore(

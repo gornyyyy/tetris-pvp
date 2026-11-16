@@ -1,22 +1,20 @@
-const https = require('https');
-const fs = require('fs');
+const http = require('http');
 const WebSocket = require('ws');
 
-const PORT = process.env.PORT || 8443;
-
 // --- Настройки защиты ---
-const MAX_PAYLOAD_BYTES = 4096;            // 1) пакет > 4 КБ → разрыв (close 1009)
-const RATE_LIMIT = 30;                     // 1) макс. 30 сообщений/сек на клиента
+const MAX_PAYLOAD_BYTES = 4096;
+const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 1000;
-const HEARTBEAT_MS = 30000;                // 2) пинг каждые 30 секунд
-const EMPTY_ROOM_TTL_MS = 5 * 60 * 1000;   // 3) пустая комната живёт 5 минут
+const HEARTBEAT_MS = 30000;
+const EMPTY_ROOM_TTL_MS = 5 * 60 * 1000;
 
-const server = https.createServer({
-    key: fs.readFileSync('C:/tetris/certs/privkey.pem'),
-    cert: fs.readFileSync('C:/tetris/certs/fullchain.pem'), // именно fullchain — с промежуточными сертификатами
-});
-
+const PORT = process.env.PORT || 8080;
+const server = http.createServer();
 const wss = new WebSocket.Server({ server, maxPayload: MAX_PAYLOAD_BYTES });
+
+server.listen(PORT, '127.0.0.1', () => {
+    console.log(`Server listening on ws://127.0.0.1:${PORT}`);
+});
 
 const rooms = new Map();
 
@@ -59,6 +57,8 @@ function newRoom() {
             { score: 0, level: 1, lines: 0 },
         ],
         cleanupTimer: null,
+        startLevel: 1,
+        seed: null,
     };
 }
 
@@ -122,6 +122,7 @@ wss.on('connection', (ws, req) => {
                     return send(ws, { type: 'error', message: 'room_exists' });
                 }
                 const room = newRoom();
+                room.startLevel = Math.min(15, Math.max(1, (msg.startLevel | 0) || 1));
                 // 3) Если за 5 минут никто не зашёл — удаляем комнату
                 room.cleanupTimer = setTimeout(() => {
                     const r = rooms.get(roomId);
@@ -190,8 +191,15 @@ wss.on('connection', (ws, req) => {
                         opponentConnected: true,
                         opponentName: name,
                     });
-                    broadcast(room, { type: 'start' });
-                    log(`  start match in ${roomId}`);
+                    
+                    const seed = require('crypto').randomInt(0, 2147483647);
+                    room.seed = seed;
+                    broadcast(room, { 
+                        type: 'start', 
+                        seed, 
+                        startLevel: room.startLevel 
+                    });
+                    log(`  start match in ${roomId} seed=${seed} lvl=${room.startLevel}`);
                 }
                 break;
             }
@@ -225,7 +233,8 @@ wss.on('connection', (ws, req) => {
                 }
                 const garbage = Math.max(0, (msg.lines | 0) - 1);
                 log(`  ${ws.slot} cleared ${msg.lines} lines → garbage ${garbage}`);
-                if (garbage > 0) {
+                if (garbage > 0)
+                {
                     broadcast(room, { type: 'add_garbage', lines: garbage }, ws);
                 }
                 break;
@@ -308,5 +317,3 @@ const heartbeat = setInterval(() => {
 }, HEARTBEAT_MS);
 
 wss.on('close', () => clearInterval(heartbeat));
-
-log(`PvP server listening on ws://0.0.0.0:${PORT}`);

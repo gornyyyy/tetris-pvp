@@ -22,7 +22,7 @@ import com.example.tetrisandroid.ui.theme.*
 @Composable
 fun PvpRoomScreen(
     isLightTheme: Boolean,
-    onCreateRoom: (roomId: String, name: String) -> Unit,
+    onCreateRoom: (roomId: String, name: String, startLevel: Int) -> Unit,
     onJoinRoom: (roomId: String, name: String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -35,6 +35,7 @@ fun PvpRoomScreen(
     var codeInput by remember { mutableStateOf("") }
     var generatedCode by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
+    var startLevel by remember { mutableStateOf(1) }
 
     val nameValid = name.trim().length in 2..16
 
@@ -71,19 +72,31 @@ fun PvpRoomScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- Создать комнату ---
-        Button(
-            onClick = {
-                focusManager.clearFocus()
-                val code = generateRoomCode()
-                generatedCode = code
-                if (nameValid) onCreateRoom(code, name.trim())
-            },
-            enabled = nameValid,
-            colors = ButtonDefaults.buttonColors(containerColor = btn, contentColor = txt),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(0.8f).height(56.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(0.8f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Создать комнату", style = MaterialTheme.typography.titleMedium)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Старт. уровень", color = muted, style = MaterialTheme.typography.labelSmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { if (startLevel > 1) startLevel-- }) { Text("−", color = txt) }
+                    Text("$startLevel", color = txt, style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { if (startLevel < 15) startLevel++ }) { Text("+", color = txt) }
+                }
+            }
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    val code = generateRoomCode()
+                    generatedCode = code
+                    if (nameValid) onCreateRoom(code, name.trim(), startLevel)
+                },
+                enabled = nameValid,
+                colors = ButtonDefaults.buttonColors(containerColor = btn, contentColor = txt),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).height(56.dp)
+            ) { Text("Создать комнату", style = MaterialTheme.typography.titleMedium) }
         }
 
         generatedCode?.let { code ->

@@ -1,5 +1,7 @@
 package com.example.tetrisandroid.model
 
+import kotlin.random.Random
+
 class Board {
     companion object {
         const val WIDTH = 10
@@ -11,6 +13,7 @@ class Board {
     val grid: Array<IntArray> = Array(TOTAL_HEIGHT) { IntArray(WIDTH) }
     // Хранит variantIndex (0..2) для Classic ИЛИ colorArgb для Modern
     val variantGrid: Array<IntArray> = Array(TOTAL_HEIGHT) { IntArray(WIDTH) }
+    private var rng: Random = Random.Default
 
     init {
         for (c in 0 until WIDTH) {
@@ -26,7 +29,7 @@ class Board {
         }
         return true
     }
-
+        // если есть 7-bag / очередь фигур — сбрось её здесь же
     fun tryMove(shape: Shape, dx: Int, dy: Int): Boolean {
         shape.move(dx, dy)
         if (isValidPosition(shape)) return true
@@ -163,18 +166,26 @@ class Board {
         return cleared
     }
 
-    fun addGarbageLine(holeColumn: Int = -1): Boolean {
+    fun addGarbageLine(): Boolean {
         if (grid[0].any { it != 0 }) return false
 
-        for (r in 0 until grid.size - 1) {
+        val floorRow = grid.size - 1
+        val insertRow = floorRow - 1
+
+        for (r in 0 until insertRow) {
             grid[r] = grid[r + 1].copyOf()
             variantGrid[r] = variantGrid[r + 1].copyOf()
         }
+
         val hole = (0 until grid[0].size).random()
         for (c in grid[0].indices) {
-            grid[grid.size - 1][c] = if (c == hole) 0 else 4
-            variantGrid[grid.size - 1][c] = 0
+            grid[insertRow][c] = if (c == hole) 0 else 4
+            variantGrid[insertRow][c] = 0
         }
         return true
+    }
+
+    fun reseed(seed: Long) {
+        rng = Random(seed)
     }
 }

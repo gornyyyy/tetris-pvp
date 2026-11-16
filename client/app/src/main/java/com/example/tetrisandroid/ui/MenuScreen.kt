@@ -73,7 +73,7 @@ fun MenuScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            audioManager.stopMusic()
+            if (selectedMode != GameMode.COMPETITIVE) audioManager.stopMusic()
         }
     }
 
@@ -121,7 +121,6 @@ fun MenuScreen(
                     val ok = pvpClient.ping(3000)
                     isPinging = false
                     if (ok) {
-                        audioManager.stopMusic()
                         onStartGame(selectedMode)
                     } else {
                         showServerUnavailable = true
@@ -142,7 +141,6 @@ fun MenuScreen(
                     scope.launch {
                         val ok = pvpClient.ping(3000)
                         if (ok) {
-                            audioManager.stopMusic()
                             onStartGame(selectedMode)
                         } else {
                             showServerUnavailable = true

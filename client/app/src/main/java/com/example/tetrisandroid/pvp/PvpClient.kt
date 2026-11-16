@@ -30,6 +30,7 @@ class PvpClient(private val serverUrl: String) {
         .build()
 
     private var webSocket: WebSocket? = null
+    private val pendingMessages = ArrayDeque<String>()
 
     private val _events = MutableSharedFlow<PvpEvent>(
         replay = 0,
@@ -42,11 +43,12 @@ class PvpClient(private val serverUrl: String) {
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected
 
-    fun createRoom(roomId: String, name: String) {
+    fun createRoom(roomId: String, name: String, startLevel: Int = 1) {
         send(JSONObject().apply {
             put("type", "create_room")
             put("roomId", roomId)
             put("name", name)
+            put("startLevel", startLevel)
         })
     }
 
@@ -71,6 +73,13 @@ class PvpClient(private val serverUrl: String) {
             override fun onOpen(ws: WebSocket, response: Response) {
                 Log.d(TAG, "onOpen")
                 _connected.value = true
+                // всё, что накопилось до подключения, отправляем теперь
+                while (pendingMessages.isNotEmpty()) {
+                    val payload = pendingMessages.removeFirst()
+                    Log.d(TAG, "> (flush) $payload")
+                    ws.send(payload)
+                }
+                _events.tryEmit(PvpEvent.Connected)
             }
 
             override fun onMessage(ws: WebSocket, text: String) {
@@ -157,7 +166,12 @@ class PvpClient(private val serverUrl: String) {
                     opponentName = json.optString("opponentName").takeIf { it.isNotEmpty() && it != "null" }
                 )
             )
-            "start" -> _events.tryEmit(PvpEvent.Start)
+            "start" -> _events.tryEmit(
+                PvpEvent.Start(
+                    seed = json.optLong("seed"),
+                    startLevel = json.optInt("startLevel", 1)
+                )
+            )
             "opponent_score" -> _events.tryEmit(
                 PvpEvent.OpponentScore(
                     score = json.optInt("score"),
@@ -188,7 +202,7 @@ class PvpClient(private val serverUrl: String) {
             put("score", score)
             put("level", level)
             put("lines", lines)
-            put("gained", gained)   // очков получено с прошлого сообщения
+            put("gained", gained)
         })
     }
 
@@ -204,16 +218,23 @@ class PvpClient(private val serverUrl: String) {
     fun sendWin() = send(JSONObject().put("type", "win"))
 
     /** Мягкое отключение (сервер получит leave). */
+    private fun send(json: JSONObject) {
+        val payload = json.toString()
+        val ws = webSocket
+        if (ws == null) {
+            Log.w(TAG, "socket is null, queueing: $payload")
+            pendingMessages.addLast(payload)
+        } else {
+            Log.d(TAG, "> $payload")
+            ws.send(payload)
+        }
+    }
+
     fun disconnect() {
         runCatching { send(JSONObject().put("type", "leave")) }
+        pendingMessages.clear()
         webSocket?.close(1000, "bye")
         webSocket = null
         _connected.value = false
-    }
-
-    private fun send(json: JSONObject) {
-        val payload = json.toString()
-        Log.d(TAG, "> $payload")
-        webSocket?.send(payload) ?: Log.e(TAG, "webSocket is null, can't send")
     }
 }

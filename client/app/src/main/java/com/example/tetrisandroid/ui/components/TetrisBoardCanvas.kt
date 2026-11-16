@@ -177,9 +177,10 @@ fun TetrisBoardCanvas(
             val isClearingRow = r in clearingLines
 
             for (c in 0 until 10) {
+                val isFloorRow = r == grid.lastIndex
                 val topLeft = Offset(
                     offsetX + c * cellSize,
-                    offsetY + (r - 4) * cellSize - garbageOffset
+                    offsetY + (r - 4) * cellSize - if (isFloorRow) 0f else garbageOffset
                 )
 
                 if (isClearingRow) {

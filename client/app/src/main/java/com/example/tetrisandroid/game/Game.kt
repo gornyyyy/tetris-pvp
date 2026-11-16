@@ -19,6 +19,8 @@ abstract class Game(
         private set
     var level = 1
         private set
+    var startLevel = 1
+        private set
 
     @Volatile var isRunning = true
         private set
@@ -263,9 +265,22 @@ abstract class Game(
     }
 
     fun reset() {
+        startLevel = 1
+        resetInternal()
+    }
+
+    /** Конфигурация PvP-матча: общий seed и стартовый уровень. Вызывается до первого тика. */
+    fun initMatch(seed: Long, startLevel: Int) {
+        board.reseed(seed)
+        this.startLevel = startLevel.coerceAtLeast(1)
+        resetInternal()
+    }
+
+    private fun resetInternal() {
         for (r in 0 until board.grid.size) {
             for (c in 0 until board.grid[0].size) {
                 board.grid[r][c] = if (r == board.grid.size - 1) 3 else 0
+                board.variantGrid[r][c] = 0
             }
         }
         currentShape = board.spawnShape()
@@ -273,10 +288,12 @@ abstract class Game(
         board.revealShape(currentShape)
         board.revealShape(nextShape)
 
-        score = 0; level = 1; isRunning = true
-        fallDelay = calculateFallDelay(1)
+        score = 0
+        level = startLevel
+        isRunning = true
+        fallDelay = calculateFallDelay(level)
         isLocking = false; lockTimer = 0L; lockResets = 0
-        lastFallTimer = 0L; linesClearedTotal = 0
+        lastFallTimer = System.currentTimeMillis(); linesClearedTotal = 0
         isClearing = false; clearProgress = 0f; clearingLines = emptyList()
         isGarbageAnimating = false; garbageProgress = 0f; garbageLines = 0
         onUpdate()
