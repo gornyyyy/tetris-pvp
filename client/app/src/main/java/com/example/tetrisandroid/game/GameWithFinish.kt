@@ -5,7 +5,7 @@ import kotlin.math.pow
 class GameWithFinish(
     onUpdate: () -> Unit,
     onGameOver: (Int) -> Unit,
-    private val onLineClear: (Int) -> Unit = {},
+    onLineClear: (Int) -> Unit = {},
     private val targetLines: Int = 160
 ) : Game(onUpdate, onGameOver, onLineClear) {
 

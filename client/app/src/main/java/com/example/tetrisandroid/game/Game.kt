@@ -5,8 +5,8 @@ import com.example.tetrisandroid.model.PlayerAction
 
 abstract class Game(
     protected val onUpdate: () -> Unit,
-    private val onGameOver: (Int) -> Unit,
-    private val onLineClear: (Int) -> Unit = {}
+    protected val onGameOver: (Int) -> Unit,
+    protected val onLineClear: (Int) -> Unit = {}
 ) {
     protected val board = Board()
 
@@ -48,6 +48,17 @@ abstract class Game(
     private var clearStartTime = 0L
     private val clearAnimDurationMs = 300L
 
+    // --- Анимация появления мусора ---
+    var garbageLines: Int = 0
+        private set
+    var garbageProgress: Float = 0f
+        private set
+    var isGarbageAnimating: Boolean = false
+        private set
+
+    private var garbageStartTime = 0L
+    private val garbageAnimDurationMs = 250L
+
     val grid: Array<IntArray> get() = board.grid
     val variantGrid: Array<IntArray> get() = board.variantGrid
 
@@ -67,6 +78,9 @@ abstract class Game(
 
     protected open fun checkExtraGameOver(): Boolean = false
 
+    /** Хук: вызывается после приземления фигуры или после очистки линий. */
+    protected open fun onAfterLockOrClear() {}
+
     init {
         board.revealShape(currentShape)
         board.revealShape(nextShape)
@@ -77,6 +91,17 @@ abstract class Game(
     fun tick() {
         if (!isRunning) return
 
+        // --- Анимация появления мусора ---
+        if (isGarbageAnimating) {
+            val elapsed = System.currentTimeMillis() - garbageStartTime
+            val totalDuration = garbageAnimDurationMs * garbageLines
+            garbageProgress = (elapsed.toFloat() / totalDuration).coerceIn(0f, 1f)
+            if (garbageProgress >= 1f) finishGarbageAnimation()
+            onUpdate()
+            return
+        }
+
+        // --- Анимация очистки ---
         if (isClearing) {
             val elapsed = System.currentTimeMillis() - clearStartTime
             clearProgress = (elapsed.toFloat() / clearAnimDurationMs).coerceIn(0f, 1f)
@@ -104,8 +129,7 @@ abstract class Game(
     }
 
     fun handleInput(action: PlayerAction) {
-
-        if (!isRunning || isClearing) return
+        if (!isRunning || isClearing || isGarbageAnimating) return
         var moved = false
 
         when (action) {
@@ -168,12 +192,13 @@ abstract class Game(
             isClearing = true
             clearProgress = 0f
             clearStartTime = System.currentTimeMillis()
-
             onLineClear(fullLines.size)
-
             onUpdate()
         } else {
-            spawnAfterLock()
+            onAfterLockOrClear()
+            if (!isGarbageAnimating) {
+                spawnAfterLock()
+            }
         }
     }
 
@@ -192,7 +217,30 @@ abstract class Game(
         clearProgress = 0f
         clearingLines = emptyList()
 
+        onAfterLockOrClear()
+        if (!isGarbageAnimating) {
+            spawnAfterLock()
+        }
+    }
+
+    /** Запускает анимацию появления мусора. */
+    protected fun startGarbageAnimation(lines: Int) {
+        if (lines <= 0) return
+        garbageLines = lines
+        garbageProgress = 0f
+        isGarbageAnimating = true
+        garbageStartTime = System.currentTimeMillis()
+        onUpdate()
+    }
+
+    /** Завершает анимацию — применяет мусорные линии к board. */
+    private fun finishGarbageAnimation() {
+        repeat(garbageLines) { board.addGarbageLine() }
+        garbageLines = 0
+        garbageProgress = 0f
+        isGarbageAnimating = false
         spawnAfterLock()
+        onUpdate()
     }
 
     private fun spawnAfterLock() {
@@ -230,6 +278,7 @@ abstract class Game(
         isLocking = false; lockTimer = 0L; lockResets = 0
         lastFallTimer = 0L; linesClearedTotal = 0
         isClearing = false; clearProgress = 0f; clearingLines = emptyList()
+        isGarbageAnimating = false; garbageProgress = 0f; garbageLines = 0
         onUpdate()
     }
 

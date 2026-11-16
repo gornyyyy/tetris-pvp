@@ -5,7 +5,7 @@ import kotlin.math.pow
 class GameClassic(
     onUpdate: () -> Unit,
     onGameOver: (Int) -> Unit,
-    private val onLineClear: (Int) -> Unit = {}
+    onLineClear: (Int) -> Unit = {}
 ) : Game(onUpdate, onGameOver, onLineClear) {
 
     override val modeName = "Classic"

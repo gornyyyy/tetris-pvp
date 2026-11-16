@@ -31,6 +31,8 @@ fun TetrisBoardCanvas(
     clearingLines: List<Int> = emptyList(),
     clearProgress: Float = 0f,
     keepFallenColor: Boolean = true,
+    garbageLines: Int = 0,
+    garbageProgress: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     val isClassicOrModern = themeType == ThemeType.CLASSIC || themeType == ThemeType.MODERN
@@ -50,7 +52,14 @@ fun TetrisBoardCanvas(
         ImageBitmap.imageResource(R.drawable.block_wall_modern)
     } else null
 
-    // Classic: картинки по уровню
+    val lockedClassicBitmap = if (themeType == ThemeType.CLASSIC) {
+        ImageBitmap.imageResource(R.drawable.block_locked_classic_7c7c7c)
+    } else null
+
+    val lockedModernBitmap = if (themeType == ThemeType.MODERN) {
+        ImageBitmap.imageResource(R.drawable.block_locked_modern_808080)
+    } else null
+
     val classicBitmaps = if (themeType == ThemeType.CLASSIC) {
         val paletteLevel = ((level - 1) % 15) + 1
         listOf(
@@ -108,7 +117,6 @@ fun TetrisBoardCanvas(
         )
     } else null
 
-    // Modern: картинки по цвету
     val modernBitmaps = if (themeType == ThemeType.MODERN) {
         mapOf(
             0xFF00FFFF.toInt() to ImageBitmap.imageResource(R.drawable.block_i_modern_00bfbf),
@@ -119,14 +127,6 @@ fun TetrisBoardCanvas(
             0xFF0000FF.toInt() to ImageBitmap.imageResource(R.drawable.block_j_modern_0000bf),
             0xFFFFA500.toInt() to ImageBitmap.imageResource(R.drawable.block_l_modern_ffa500)
         )
-    } else null
-
-    val lockedClassicBitmap = if (themeType == ThemeType.CLASSIC) {
-        ImageBitmap.imageResource(R.drawable.block_locked_classic_7c7c7c)
-    } else null
-
-    val lockedModernBitmap = if (themeType == ThemeType.MODERN) {
-        ImageBitmap.imageResource(R.drawable.block_locked_modern_808080)
     } else null
 
     val ghostBlocks: List<Pair<Int, Int>> = if (highlightColumn && activeBlocks.isNotEmpty()) {
@@ -152,6 +152,13 @@ fun TetrisBoardCanvas(
         val offsetX = (size.width - cellSize * 10) / 2f
         val offsetY = (size.height - cellSize * visibleRows) / 2f
 
+        // Сдвиг поля вверх при анимации мусора
+        val garbageOffset = if (garbageLines > 0) {
+            val totalProgress = garbageProgress * garbageLines
+            val partial = totalProgress - totalProgress.toInt()
+            partial * cellSize
+        } else 0f
+
         // 1) Фон поля
         drawRect(color = background, topLeft = Offset(offsetX, offsetY), size = Size(cellSize * 10, cellSize * 20))
 
@@ -170,7 +177,10 @@ fun TetrisBoardCanvas(
             val isClearingRow = r in clearingLines
 
             for (c in 0 until 10) {
-                val topLeft = Offset(offsetX + c * cellSize, offsetY + (r - 4) * cellSize)
+                val topLeft = Offset(
+                    offsetX + c * cellSize,
+                    offsetY + (r - 4) * cellSize - garbageOffset
+                )
 
                 if (isClearingRow) {
                     val centerCol = 4.5f
@@ -208,7 +218,6 @@ fun TetrisBoardCanvas(
 
                 when (cellValue) {
                     1 -> {
-                        // Активная фигура
                         if (themeType == ThemeType.CLASSIC && classicBitmaps != null) {
                             drawImage(
                                 image = classicBitmaps[activeVariantIndex.coerceIn(0, 2)],
@@ -282,9 +291,11 @@ fun TetrisBoardCanvas(
         if (highlightColumn && ghostBlocks.isNotEmpty() && clearingLines.isEmpty()) {
             for ((gx, gy) in ghostBlocks) {
                 if (gy < 4) continue
-                val topLeft = Offset(offsetX + gx * cellSize, offsetY + (gy - 4) * cellSize)
+                val topLeft = Offset(
+                    offsetX + gx * cellSize,
+                    offsetY + (gy - 4) * cellSize - garbageOffset
+                )
 
-                // Рисуем призрак с учётом скина
                 if (themeType == ThemeType.CLASSIC && classicBitmaps != null) {
                     drawImage(
                         image = classicBitmaps[activeVariantIndex.coerceIn(0, 2)],

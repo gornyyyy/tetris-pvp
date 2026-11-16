@@ -1,10 +1,12 @@
 package com.example.tetrisandroid.pvp
 
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -12,6 +14,8 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class PvpClient(private val serverUrl: String) {
 
@@ -87,6 +91,37 @@ class PvpClient(private val serverUrl: String) {
                 _events.tryEmit(PvpEvent.Disconnected)
             }
         })
+    }
+
+    /**
+     * Проверяет доступность сервера: открывает отдельный WebSocket и ждёт onOpen/onFailure.
+     * Возвращает true, если сервер ответил за [timeoutMs] мс.
+     */
+    suspend fun ping(timeoutMs: Long = 3000L): Boolean {
+        return withContext(Dispatchers.IO) {
+            val latch = CountDownLatch(1)
+            val result = AtomicBoolean(false)
+
+            val request = Request.Builder().url(serverUrl).build()
+            val ws = client.newWebSocket(request, object : WebSocketListener() {
+                override fun onOpen(ws: WebSocket, response: Response) {
+                    result.set(true)
+                    latch.countDown()
+                    ws.close(1000, "ping")
+                }
+
+                override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                    result.set(false)
+                    latch.countDown()
+                }
+            })
+
+            val ok = latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+            if (!ok) {
+                ws.cancel()
+            }
+            result.get() && ok
+        }
     }
 
     private fun parse(text: String) {

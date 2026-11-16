@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.tetrisandroid.data.ThemeType
+import com.example.tetrisandroid.ui.game.UiState
 import com.example.tetrisandroid.ui.components.TetrisBoardCanvas
 
 @Composable
@@ -14,7 +15,9 @@ fun GameField(
     highlightColumn: Boolean,
     isLightTheme: Boolean,
     themeType: ThemeType,
-    keepFallenColor: Boolean
+    keepFallenColor: Boolean,
+    garbageLines: Int,
+    garbageProgress: Float
 ) {
     TetrisBoardCanvas(
         grid = state.grid,
@@ -28,6 +31,8 @@ fun GameField(
         level = state.level,
         clearingLines = state.clearingLines,
         keepFallenColor = keepFallenColor,
+        garbageLines = garbageLines,
+        garbageProgress = garbageProgress,
         clearProgress = state.clearProgress,
         modifier = Modifier.fillMaxSize()
     )

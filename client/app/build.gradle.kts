@@ -13,8 +13,9 @@ android {
         applicationId = "com.example.tetrisandroid"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
-        versionName = "3.0"
+        versionCode = 5
+        versionName = "3.1"
+        buildConfigField("String", "PVP_SERVER_URL", "\"wss://10.99.99.1:8443\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

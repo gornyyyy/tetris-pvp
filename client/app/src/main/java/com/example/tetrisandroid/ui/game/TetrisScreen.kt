@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.tetrisandroid.BuildConfig
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
@@ -44,7 +45,7 @@ fun TetrisScreen(
 
     val isPvp = mode == GameMode.COMPETITIVE
     val pvpClient = remember(isPvp) {
-        if (isPvp) PvpClient("ws://192.168.1.123:8080") else null
+        if (isPvp) PvpClient(BuildConfig.PVP_SERVER_URL) else null
     }
     var roomId by remember { mutableStateOf<String?>(null) }
     var playerName by remember { mutableStateOf("Player") }
@@ -367,7 +368,9 @@ fun TetrisScreen(
                     highlightColumn = highlightColumn,
                     isLightTheme = isLightTheme,
                     themeType = themeType,
-                    keepFallenColor = keepFallenColor
+                    keepFallenColor = keepFallenColor,
+                    garbageLines = game.garbageLines,
+                    garbageProgress = game.garbageProgress
                 )
             }
 
@@ -375,7 +378,7 @@ fun TetrisScreen(
 
             Box(
                 modifier = Modifier
-                    .weight(if (isPvp) panelWeight * 0.85f else panelWeight) // в PvP панель уже
+                    .weight(if (isPvp) panelWeight * 0.85f else panelWeight)
                     .fillMaxHeight()
             ) {
                 if (isPvp) {

@@ -1,6 +1,8 @@
+const https = require('https');
+const fs = require('fs');
 const WebSocket = require('ws');
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8443;
 
 // --- Настройки защиты ---
 const MAX_PAYLOAD_BYTES = 4096;            // 1) пакет > 4 КБ → разрыв (close 1009)
@@ -9,7 +11,12 @@ const RATE_WINDOW_MS = 1000;
 const HEARTBEAT_MS = 30000;                // 2) пинг каждые 30 секунд
 const EMPTY_ROOM_TTL_MS = 5 * 60 * 1000;   // 3) пустая комната живёт 5 минут
 
-const wss = new WebSocket.Server({ port: PORT, maxPayload: MAX_PAYLOAD_BYTES });
+const server = https.createServer({
+    key: fs.readFileSync('C:/tetris/certs/privkey.pem'),
+    cert: fs.readFileSync('C:/tetris/certs/fullchain.pem'), // именно fullchain — с промежуточными сертификатами
+});
+
+const wss = new WebSocket.Server({ server, maxPayload: MAX_PAYLOAD_BYTES });
 
 const rooms = new Map();
 

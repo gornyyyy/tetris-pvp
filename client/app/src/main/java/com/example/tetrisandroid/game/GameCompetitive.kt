@@ -20,6 +20,8 @@ class GameCompetitive(
     private var lastReportedLevel = -1
     private var lastReportedLines = -1
 
+    private var queuedGarbage = 0
+
     override fun calculateFallDelay(level: Int): Long {
         val lvl = level.coerceAtLeast(1)
         val millis = 500.0 * 0.766.pow(lvl - 1)
@@ -38,6 +40,13 @@ class GameCompetitive(
         return points * level
     }
 
+    override fun onAfterLockOrClear() {
+        if (queuedGarbage > 0) {
+            startGarbageAnimation(queuedGarbage)
+            queuedGarbage = 0
+        }
+    }
+
     fun reportIfChanged() {
         if (score != lastReportedScore ||
             level != lastReportedLevel ||
@@ -52,8 +61,7 @@ class GameCompetitive(
 
     fun receiveGarbage(lines: Int) {
         if (!isRunning || lines <= 0) return
-        repeat(lines) { board.addGarbageLine() }
-        onUpdate()
+        queuedGarbage += lines
     }
 
     fun notifyGameOver() {
