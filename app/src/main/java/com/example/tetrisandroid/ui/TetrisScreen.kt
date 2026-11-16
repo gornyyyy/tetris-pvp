@@ -123,6 +123,8 @@ fun TetrisScreen(
 
     var statsSaved by remember { mutableStateOf(false) }
 
+    var keepFallenColor by remember { mutableStateOf(gameSettings.keepFallenColor) }
+
     val isClassicOrModern = themeType == ThemeType.CLASSIC || themeType == ThemeType.MODERN
 
     val baseBackground = if (isLightTheme) LightBackground else DarkBackground
@@ -269,6 +271,7 @@ fun TetrisScreen(
                     themeType = themeType,
                     level = state.level,
                     clearingLines = state.clearingLines,
+                    keepFallenColor = keepFallenColor,
                     clearProgress = state.clearProgress
                 )
             }
@@ -276,7 +279,10 @@ fun TetrisScreen(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(
-                modifier = Modifier.weight(panelWeight).fillMaxHeight(),
+                modifier = Modifier
+                    .weight(panelWeight)
+                    .fillMaxHeight()
+                    .padding(top=15.dp),
                 verticalArrangement = Arrangement.Top
             ) {
                 Text(
@@ -291,11 +297,8 @@ fun TetrisScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("BEST", color = mutedColor, style = MaterialTheme.typography.labelMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(formatScore(bestScore), color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("lvl $bestLevel", color = mutedColor, style = MaterialTheme.typography.bodySmall)
-                }
+                Text(formatScore(bestScore), color = if (isLightTheme) LightAccent else DarkAccent, style = MaterialTheme.typography.titleLarge)
+                Text("lvl $bestLevel", color = mutedColor, style = MaterialTheme.typography.bodySmall)
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("LEVEL", color = mutedColor, style = MaterialTheme.typography.labelMedium)
@@ -327,7 +330,7 @@ fun TetrisScreen(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("II", color = textColor, style = MaterialTheme.typography.titleMedium)
+                        Text("| |", color = textColor, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -463,6 +466,8 @@ fun TetrisScreen(
                 if (openedSettingsFromPause) showLeavePauseConfirm = true
                 else onOpenLayoutEditor()
             },
+            keepFallenColor = keepFallenColor,
+            onKeepFallenColorChange = { keepFallenColor = it; gameSettings.keepFallenColor = it },
             onClose = { showSettings = false }
         )
     }

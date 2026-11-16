@@ -30,6 +30,7 @@ fun TetrisBoardCanvas(
     level: Int,
     clearingLines: List<Int> = emptyList(),
     clearProgress: Float = 0f,
+    keepFallenColor: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val isClassicOrModern = themeType == ThemeType.CLASSIC || themeType == ThemeType.MODERN
@@ -120,6 +121,14 @@ fun TetrisBoardCanvas(
         )
     } else null
 
+    val lockedClassicBitmap = if (themeType == ThemeType.CLASSIC) {
+        ImageBitmap.imageResource(R.drawable.block_locked_classic_7c7c7c)
+    } else null
+
+    val lockedModernBitmap = if (themeType == ThemeType.MODERN) {
+        ImageBitmap.imageResource(R.drawable.block_locked_modern_808080)
+    } else null
+
     val ghostBlocks: List<Pair<Int, Int>> = if (highlightColumn && activeBlocks.isNotEmpty()) {
         var shift = 0
         while (true) {
@@ -202,18 +211,29 @@ fun TetrisBoardCanvas(
                         }
                     }
                     2 -> {
-                        // Упавшая фигура
                         val variant = variantGrid[r][c]
-                        if (themeType == ThemeType.CLASSIC && classicBitmaps != null) {
+                        if (keepFallenColor && themeType == ThemeType.CLASSIC && classicBitmaps != null) {
                             drawImage(
                                 image = classicBitmaps[variant.coerceIn(0, 2)],
                                 dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
                                 dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
                             )
-                        } else if (themeType == ThemeType.MODERN && modernBitmaps != null) {
+                        } else if (keepFallenColor && themeType == ThemeType.MODERN && modernBitmaps != null) {
                             val bmp = modernBitmaps[variant] ?: modernBitmaps[0xFF00FFFF.toInt()]!!
                             drawImage(
                                 image = bmp,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
+                            )
+                        } else if (themeType == ThemeType.CLASSIC && lockedClassicBitmap != null) {
+                            drawImage(
+                                image = lockedClassicBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
+                            )
+                        } else if (themeType == ThemeType.MODERN && lockedModernBitmap != null) {
+                            drawImage(
+                                image = lockedModernBitmap,
                                 dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
                                 dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
                             )

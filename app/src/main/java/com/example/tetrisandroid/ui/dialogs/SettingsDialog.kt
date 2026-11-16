@@ -19,9 +19,11 @@ fun SettingsDialog(
     highlightColumn: Boolean,
     audioSettings: AudioSettings,
     currentTheme: ThemeType,
+    keepFallenColor: Boolean,
     onThemeChange: (ThemeType) -> Unit,
     onLightThemeChange: (Boolean) -> Unit,
     onHighlightChange: (Boolean) -> Unit,
+    onKeepFallenColorChange: (Boolean) -> Unit,
     onAudioSettingsChanged: () -> Unit,
     onOpenLayoutEditor: () -> Unit,
     onClose: () -> Unit
@@ -115,8 +117,10 @@ fun SettingsDialog(
         ThemeSelectionDialog(
             isLightTheme = isLightTheme,
             currentTheme = currentTheme,
+            keepFallenColor = keepFallenColor,
             onThemeChange = onThemeChange,
             onLightThemeChange = onLightThemeChange,
+            onKeepFallenColorChange = onKeepFallenColorChange,
             onClose = { showThemeSelection = false }
         )
     }

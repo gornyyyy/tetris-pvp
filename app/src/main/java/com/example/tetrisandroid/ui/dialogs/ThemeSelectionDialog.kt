@@ -24,8 +24,10 @@ import kotlin.random.Random
 fun ThemeSelectionDialog(
     isLightTheme: Boolean,
     currentTheme: ThemeType,
+    keepFallenColor: Boolean,
     onThemeChange: (ThemeType) -> Unit,
     onLightThemeChange: (Boolean) -> Unit,
+    onKeepFallenColorChange: (Boolean) -> Unit,
     onClose: () -> Unit
 ) {
     val bg = if (isLightTheme) Color.White else Color(0xFF1B263B)
@@ -53,13 +55,6 @@ fun ThemeSelectionDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Эти скины работают только в тёмной теме",
-                    color = accent,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -73,6 +68,24 @@ fun ThemeSelectionDialog(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Оставлять цвет\n после падения",
+                        color = txt,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Switch(
+                        checked = keepFallenColor,
+                        onCheckedChange = onKeepFallenColorChange
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

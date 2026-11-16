@@ -53,7 +53,7 @@ fun MenuScreen(
     val mutedColor = if (isLightTheme) LightMuted else DarkMuted
 
     var themeType by remember { mutableStateOf(gameSettings.themeType) }
-
+    var keepFallenColor by remember { mutableStateOf(gameSettings.keepFallenColor) }
 
     LaunchedEffect(Unit) {
         audioManager.playRandomMenuMusic()
@@ -131,9 +131,11 @@ fun MenuScreen(
             highlightColumn = highlightColumn,
             audioSettings = audioSettings,
             currentTheme = themeType,
+            keepFallenColor = keepFallenColor,
             onThemeChange = { themeType = it; gameSettings.themeType = it },
             onLightThemeChange = { isLightTheme = it; gameSettings.isLightTheme = it },
             onHighlightChange = { highlightColumn = it; gameSettings.highlightColumn = it },
+            onKeepFallenColorChange = { keepFallenColor = it; gameSettings.keepFallenColor = it },
             onAudioSettingsChanged = { audioManager.updateMusicVolume() },
             onOpenLayoutEditor = {
                 showSettings = false

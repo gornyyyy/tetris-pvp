@@ -27,4 +27,8 @@ class GameSettings(context: Context) {
     var themeType: ThemeType
         get() = ThemeType.values().firstOrNull { it.id == prefs.getString("theme_type", "modern") } ?: ThemeType.BASIC
         set(value) = prefs.edit().putString("theme_type", value.id).apply()
+
+    var keepFallenColor: Boolean
+        get() = prefs.getBoolean("keep_fallen_color", true)
+        set(value) = prefs.edit().putBoolean("keep_fallen_color", value).apply()
 }
