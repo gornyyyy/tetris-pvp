@@ -31,6 +31,11 @@ fun GameInfoPanel(
     textColor: Color,
     mutedColor: Color,
     nextSize: androidx.compose.ui.unit.Dp,
+    isPvp: Boolean = false,
+    opponentScore: Int = 0,
+    opponentLevel: Int = 1,
+    opponentConnected: Boolean = false,
+    pvpStatus: String = "",
     onPause: () -> Unit
 ) {
     Column(

@@ -182,7 +182,7 @@ fun ModeStatsCard(
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
 
     if (mode == GameMode.COMPETITIVE) {
-        Text("Competitive — скоро", color = mutedColor, style = MaterialTheme.typography.bodyMedium)
+        Text("matchmaking - скоро", color = mutedColor, style = MaterialTheme.typography.bodyMedium)
         return
     }
 

@@ -6,11 +6,19 @@ class GameCompetitive(
     onUpdate: () -> Unit,
     onGameOver: (Int) -> Unit,
     private val onAttack: (lines: Int) -> Unit = {},
-    private val onLineClear: (Int) -> Unit = {}
+    private val onLineClearEvent: (lines: Int) -> Unit = {},
+    private val onScoreChanged: (score: Int, level: Int, lines: Int) -> Unit = { _, _, _ -> },
+    private val onGameOverEvent: () -> Unit = {},
+    private val onWinEvent: () -> Unit = {},
+    onLineClear: (Int) -> Unit = {}
 ) : Game(onUpdate, onGameOver, onLineClear) {
 
     override val modeName = "Competitive"
     override val modeId = "competitive"
+
+    private var lastReportedScore = -1
+    private var lastReportedLevel = -1
+    private var lastReportedLines = -1
 
     override fun calculateFallDelay(level: Int): Long {
         val lvl = level.coerceAtLeast(1)
@@ -25,7 +33,34 @@ class GameCompetitive(
 
         if (cleared >= 2) {
             onAttack(cleared - 1)
+            onLineClearEvent(cleared)
         }
         return points * level
+    }
+
+    fun reportIfChanged() {
+        if (score != lastReportedScore ||
+            level != lastReportedLevel ||
+            linesClearedTotal != lastReportedLines
+        ) {
+            lastReportedScore = score
+            lastReportedLevel = level
+            lastReportedLines = linesClearedTotal
+            onScoreChanged(score, level, linesClearedTotal)
+        }
+    }
+
+    fun receiveGarbage(lines: Int) {
+        if (!isRunning || lines <= 0) return
+        repeat(lines) { board.addGarbageLine() }
+        onUpdate()
+    }
+
+    fun notifyGameOver() {
+        onGameOverEvent()
+    }
+
+    fun notifyWin() {
+        onWinEvent()
     }
 }

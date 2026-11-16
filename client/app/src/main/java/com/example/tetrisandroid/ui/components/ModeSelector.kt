@@ -53,22 +53,19 @@ fun ModeSelector(
                 modifier = Modifier.width(menuWidth)
             ) {
                 GameMode.values().forEach { mode ->
-                    val isCompetitive = mode == GameMode.COMPETITIVE
                     DropdownMenuItem(
                         text = {
                             Text(
-                                text = mode.displayName + if (isCompetitive) " (скоро)" else "",
-                                color = if (isCompetitive) mutedColor.copy(alpha = 0.5f) else textColor,
+                                text = mode.displayName,
+                                color = textColor,
                                 style = MaterialTheme.typography.titleMedium
                             )
                         },
                         onClick = {
-                            if (!isCompetitive) {
-                                onModeSelected(mode)
-                                expanded = false
-                            }
+                            onModeSelected(mode)
+                            expanded = false
                         },
-                        enabled = !isCompetitive
+                        enabled = true
                     )
                 }
             }

@@ -34,7 +34,7 @@ fun ConfirmLeavePauseDialog(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Перейти в редактор?",
+                    text = "Вы уверены?",
                     color = txt,
                     style = MaterialTheme.typography.headlineSmall
                 )
@@ -56,7 +56,7 @@ fun ConfirmLeavePauseDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text("Отмена", style = MaterialTheme.typography.titleMedium)
+                        Text("Нет", style = MaterialTheme.typography.titleMedium)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(

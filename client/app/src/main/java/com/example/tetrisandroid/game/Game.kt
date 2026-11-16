@@ -4,7 +4,7 @@ import com.example.tetrisandroid.model.Board
 import com.example.tetrisandroid.model.PlayerAction
 
 abstract class Game(
-    private val onUpdate: () -> Unit,
+    protected val onUpdate: () -> Unit,
     private val onGameOver: (Int) -> Unit,
     private val onLineClear: (Int) -> Unit = {}
 ) {

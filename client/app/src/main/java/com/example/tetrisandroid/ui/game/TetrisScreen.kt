@@ -13,9 +13,13 @@ import com.example.tetrisandroid.audio.GameAudioManager
 import com.example.tetrisandroid.data.*
 import com.example.tetrisandroid.game.*
 import com.example.tetrisandroid.model.PlayerAction
+import com.example.tetrisandroid.pvp.PvpClient
+import com.example.tetrisandroid.pvp.PvpEvent
 import com.example.tetrisandroid.ui.dialogs.*
 import com.example.tetrisandroid.ui.theme.*
 import kotlinx.coroutines.delay
+
+enum class PvpMatchStatus { PLAYING, WAITING_OPPONENT, WINNER, LOSER }
 
 @Composable
 fun TetrisScreen(
@@ -38,16 +42,35 @@ fun TetrisScreen(
     val hPad = layoutSettings.horizontalPadding.dp
     val nextSize = (136f * (topWeight / 0.75f)).coerceIn(80f, 160f).dp
 
-    val game = remember {
+    val isPvp = mode == GameMode.COMPETITIVE
+    val pvpClient = remember(isPvp) {
+        if (isPvp) PvpClient("ws://192.168.1.123:8080") else null
+    }
+    var roomId by remember { mutableStateOf<String?>(null) }
+    var playerName by remember { mutableStateOf("Player") }
+    var roomCreated by remember { mutableStateOf(false) }
+    var pendingRoomId by remember { mutableStateOf<String?>(null) }
+
+    val game = remember(mode) {
         when (mode) {
             GameMode.CLASSIC -> GameClassic({}, {}, onLineClear = { lines -> audioManager.playLineClear(lines) })
             GameMode.FAST -> GameFast({}, {}, onLineClear = { lines -> audioManager.playLineClear(lines) })
             GameMode.FINISH -> GameWithFinish({}, {}, onLineClear = { lines -> audioManager.playLineClear(lines) })
-            GameMode.COMPETITIVE -> GameCompetitive({}, {}, onLineClear = { lines -> audioManager.playLineClear(lines) })
+            GameMode.COMPETITIVE -> GameCompetitive(
+                onUpdate = { },
+                onGameOver = { /* локальный game over — обработается в refreshUi */ },
+                onAttack = { },
+                onLineClearEvent = { lines -> pvpClient?.sendLineClear(lines) },
+                onScoreChanged = { s, l, ln -> pvpClient?.sendScore(s, l, ln) },
+                onGameOverEvent = { pvpClient?.sendGameOver() },
+                onWinEvent = { pvpClient?.sendWin() },
+                onLineClear = { lines -> audioManager.playLineClear(lines) }
+            )
         }
     }
 
     var isPaused by remember { mutableStateOf(false) }
+    var showPvpPause by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var openedSettingsFromPause by remember { mutableStateOf(false) }
     var showLeavePauseConfirm by remember { mutableStateOf(false) }
@@ -65,6 +88,22 @@ fun TetrisScreen(
 
     val isClassicOrModern = themeType == ThemeType.CLASSIC || themeType == ThemeType.MODERN
     val darkenFactor = if (isClassicOrModern) 0.7f else 1.0f
+
+    var matchStarted by remember { mutableStateOf(!isPvp) }
+
+    var opponentNickname by remember { mutableStateOf("Соперник") }
+    var pvpMatchStatus by remember { mutableStateOf(PvpMatchStatus.PLAYING) }
+    var myGameOver by remember { mutableStateOf(false) }
+    var opponentGameOver by remember { mutableStateOf(false) }
+
+    var opponentScore by remember { mutableStateOf(0) }
+    var opponentLevel by remember { mutableStateOf(1) }
+    var opponentLines by remember { mutableStateOf(0) }
+    var opponentConnected by remember { mutableStateOf(false) }
+    var pvpStatus by remember { mutableStateOf("Ожидание соперника...") }
+    var showPvpSurrenderConfirm by remember { mutableStateOf(false) }
+    var showPvpResult by remember { mutableStateOf(false) }
+    var pvpResultVictory by remember { mutableStateOf(false) }
 
     val background = (if (isLightTheme) LightBackground else DarkBackground).darken(darkenFactor)
     val buttonColor = (if (isLightTheme) LightButton else DarkButton).darken(darkenFactor)
@@ -85,6 +124,24 @@ fun TetrisScreen(
         )
     }
     val state = uiState
+
+    if (isPvp && roomId == null) {
+        PvpRoomScreen(
+            isLightTheme = isLightTheme,
+            onCreateRoom = { code, name ->
+                playerName = name
+                pvpClient?.connect()
+                pvpClient?.createRoom(code, name)
+                pendingRoomId = code
+            },
+            onJoinRoom = { code, name ->
+                playerName = name
+                roomId = code
+            },
+            onBack = onExitToMenu
+        )
+        return
+    }
 
     fun refreshUi() {
         uiState = UiState(
@@ -109,10 +166,143 @@ fun TetrisScreen(
             bestLevel = statsStorage.getBestLevel(mode.id)
             audioManager.stopMusic()
             if (won) audioManager.playWinSfx() else audioManager.playLoseSfx()
+
+            if (game is GameCompetitive) {
+                myGameOver = true
+                game.notifyGameOver()
+
+                when {
+                    opponentGameOver -> {
+                        val iWin = uiState.score > opponentScore
+                        pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
+                        pvpResultVictory = iWin
+                        showPvpResult = true
+                    }
+                    opponentScore > uiState.score -> {
+                        pvpMatchStatus = PvpMatchStatus.LOSER
+                        pvpResultVictory = false
+                        showPvpResult = true
+                    }
+                    else -> {
+                        pvpMatchStatus = PvpMatchStatus.WAITING_OPPONENT
+                    }
+                }
+            }
         }
     }
 
     // --- Эффекты (музыка, таймер, диалоги) ---
+    LaunchedEffect(isPvp) {
+        if (!isPvp || pvpClient == null || roomId == null) return@LaunchedEffect
+        pvpClient.joinRoom(roomId!!, playerName)
+
+        pvpClient.events.collect { event ->
+            when (event) {
+                is PvpEvent.RoomCreated -> {
+                    pendingRoomId = null
+                }
+                is PvpEvent.Joined -> {
+                    opponentConnected = event.opponentConnected
+                    event.opponentName?.let { opponentNickname = it }
+                    pvpStatus = if (event.opponentConnected) "Матч начался" else "Ожидание соперника…"
+                }
+
+                PvpEvent.Start -> {
+                    pvpStatus = "Матч начался"
+                    matchStarted = true
+                    if (myGameOver) {
+                        when {
+                            opponentGameOver -> {
+                                val iWin = uiState.score > opponentScore
+                                pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
+                                pvpResultVictory = iWin
+                                showPvpResult = true
+                            }
+                            opponentScore > uiState.score -> {
+                                pvpMatchStatus = PvpMatchStatus.LOSER
+                                pvpResultVictory = false
+                                showPvpResult = true
+                            }
+                            else -> pvpMatchStatus = PvpMatchStatus.WAITING_OPPONENT
+                        }
+                    }
+                }
+
+                is PvpEvent.OpponentScore -> {
+                    opponentScore = event.score
+                    opponentLevel = event.level
+                    opponentLines = event.lines
+
+                    if (myGameOver && pvpMatchStatus == PvpMatchStatus.WAITING_OPPONENT) {
+                        if (event.score > uiState.score) {
+                            pvpMatchStatus = PvpMatchStatus.LOSER
+                            pvpResultVictory = false
+                            showPvpResult = true
+                        } else if (opponentGameOver) {
+                            val iWin = uiState.score > event.score
+                            pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
+                            pvpResultVictory = iWin
+                            showPvpResult = true
+                        }
+                    }
+                }
+
+                PvpEvent.OpponentGameOver -> {
+                    opponentGameOver = true
+                    pvpStatus = "Соперник проиграл"
+                    if (myGameOver) {
+                        val iWin = uiState.score > opponentScore
+                        pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
+                        pvpResultVictory = iWin
+                        showPvpResult = true
+                    } else {
+                        pvpMatchStatus = PvpMatchStatus.WINNER
+                    }
+                }
+
+                PvpEvent.OpponentWin -> {
+                    opponentGameOver = true
+                    if (myGameOver) {
+                        pvpMatchStatus = PvpMatchStatus.LOSER
+                        pvpResultVictory = false
+                        showPvpResult = true
+                    }
+                }
+
+                PvpEvent.OpponentDisconnected -> {
+                    opponentConnected = false
+                    opponentGameOver = true
+                    pvpStatus = "Соперник отключился"
+                    if (myGameOver) {
+                        val iWin = uiState.score > opponentScore
+                        pvpMatchStatus = if (iWin) PvpMatchStatus.WINNER else PvpMatchStatus.LOSER
+                        pvpResultVictory = iWin
+                        showPvpResult = true
+                    } else {
+                        pvpMatchStatus = if (uiState.score > opponentScore) PvpMatchStatus.WINNER else PvpMatchStatus.PLAYING
+                    }
+                }
+
+                is PvpEvent.Error -> {
+                    pvpStatus = "Ошибка: ${event.message}"
+                }
+
+                PvpEvent.Disconnected -> {
+                    opponentConnected = false
+                    pvpStatus = "Отключено"
+                }
+
+                is PvpEvent.AddGarbage -> {
+                    (game as? GameCompetitive)?.receiveGarbage(event.lines)
+                    refreshUi()
+                }
+            }
+        }
+    }
+    DisposableEffect(isPvp) {
+        onDispose { pvpClient?.disconnect() }
+    }
+
     LaunchedEffect(Unit) { audioManager.updateGameLevel(uiState.level) }
     LaunchedEffect(uiState.level) {
         if (uiState.level > 1) audioManager.playLevelUp()
@@ -122,8 +312,9 @@ fun TetrisScreen(
         if (isPaused) audioManager.pauseMusic() else audioManager.startGameMusic(game.level)
         onDispose { }
     }
-    LaunchedEffect(isPaused) {
-        if (isPaused) return@LaunchedEffect
+    LaunchedEffect(isPaused,showPvpPause, matchStarted) {
+        val shouldStop = if (isPvp) false else isPaused
+        if (shouldStop || !matchStarted) return@LaunchedEffect
         refreshUi()
         while (game.isRunning) { delay(16); game.tick(); refreshUi() }
         refreshUi()
@@ -136,7 +327,7 @@ fun TetrisScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (!isPaused && uiState.isRunning) audioManager.startGameMusic(game.level)
     }
-    LaunchedEffect(uiState.isRunning) {
+    LaunchedEffect(uiState.isRunning && !isPvp) {
         if (!uiState.isRunning) {
             delay(2500)
             if ((game as? GameWithFinish)?.isWon == true) {
@@ -182,22 +373,46 @@ fun TetrisScreen(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Box(modifier = Modifier.weight(panelWeight).fillMaxHeight()) {
-                GameInfoPanel(
-                    mode = mode,
-                    state = state,
-                    bestScore = bestScore,
-                    bestLevel = bestLevel,
-                    isLightTheme = isLightTheme,
-                    themeType = themeType,
-                    nextVariantIndex = game.nextShape.variantIndex,
-                    isPaused = isPaused,
-                    buttonColor = buttonColor,
-                    textColor = textColor,
-                    mutedColor = mutedColor,
-                    nextSize = nextSize,
-                    onPause = { isPaused = true }
-                )
+            Box(
+                modifier = Modifier
+                    .weight(if (isPvp) panelWeight * 0.85f else panelWeight) // в PvP панель уже
+                    .fillMaxHeight()
+            ) {
+                if (isPvp) {
+                    PvpGameInfoPanel(
+                        state = state,
+                        opponentNickname = opponentNickname,
+                        opponentScore = opponentScore,
+                        opponentConnected = opponentConnected,
+                        pvpStatus = pvpStatus,
+                        pvpMatchStatus = pvpMatchStatus,
+                        themeType = themeType,
+                        nextVariantIndex = game.nextShape.variantIndex,
+                        isLightTheme = isLightTheme,
+                        isPaused = isPaused,
+                        buttonColor = buttonColor,
+                        textColor = textColor,
+                        mutedColor = mutedColor,
+                        nextSize = nextSize,
+                        onPause = { isPaused = true }
+                    )
+                } else {
+                    GameInfoPanel(
+                        mode = mode,
+                        state = state,
+                        bestScore = bestScore,
+                        bestLevel = bestLevel,
+                        isLightTheme = isLightTheme,
+                        themeType = themeType,
+                        nextVariantIndex = game.nextShape.variantIndex,
+                        isPaused = isPaused,
+                        buttonColor = buttonColor,
+                        textColor = textColor,
+                        mutedColor = mutedColor,
+                        nextSize = nextSize,
+                        onPause = { isPaused = true }
+                    )
+                }
             }
         }
 
@@ -217,7 +432,19 @@ fun TetrisScreen(
     }
 
     // Диалоги
-    if (isPaused) {
+    if (isPaused && isPvp) {
+        PvpPauseDialog(
+            isLightTheme = isLightTheme,
+            isWinner = pvpMatchStatus == PvpMatchStatus.WINNER,
+            onResume = { isPaused = false },
+            onSurrender = { showPvpSurrenderConfirm = true },
+            onExitToMenu = {
+                isPaused = false
+                pvpClient?.disconnect()
+                onExitToMenu()
+            }
+        )
+    }else if (isPaused && !isPvp) {
         PauseDialog(
             bestScore = bestScore, bestLevel = bestLevel,
             currentScore = state.score, currentLevel = state.level,
@@ -226,6 +453,31 @@ fun TetrisScreen(
             onRestart = { onRestart() },
             onSettings = { openedSettingsFromPause = true; showSettings = true },
             onExitToMenu = onExitToMenu
+        )
+    }
+    if (showPvpSurrenderConfirm) {
+        ConfirmLeavePauseDialog(
+            isLightTheme = isLightTheme,
+            onConfirm = {
+                showPvpSurrenderConfirm = false
+                isPaused = false
+                (game as? GameCompetitive)?.notifyGameOver()
+                onExitToMenu()
+            },
+            onDismiss = { showPvpSurrenderConfirm = false }
+        )
+    }
+    if (showPvpResult) {
+        PvpResultDialog(
+            isVictory = pvpResultVictory,
+            myScore = state.score,
+            opponentScore = opponentScore,
+            isLightTheme = isLightTheme,
+            onExitToMenu = {
+                showPvpResult = false
+                audioManager.stopDialogSound()
+                onExitToMenu()
+            }
         )
     }
     if (showGameOverDialog) {
