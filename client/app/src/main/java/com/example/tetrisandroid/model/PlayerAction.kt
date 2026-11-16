@@ -1,0 +1,10 @@
+package com.example.tetrisandroid.model
+
+enum class PlayerAction {
+    MOVE_LEFT,
+    MOVE_RIGHT,
+    MOVE_DOWN,
+    ROTATE,
+    HARD_DROP,
+    QUIT
+}
