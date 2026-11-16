@@ -25,6 +25,8 @@ import com.example.tetrisandroid.ui.components.SettingsButton
 import com.example.tetrisandroid.ui.components.StartButton
 import com.example.tetrisandroid.ui.dialogs.SettingsDialog
 import com.example.tetrisandroid.ui.dialogs.UpdateDialog
+import com.example.tetrisandroid.ui.game.formatScore
+import com.example.tetrisandroid.ui.layout.LayoutEditorScreen
 import com.example.tetrisandroid.ui.theme.*
 
 @Composable

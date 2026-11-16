@@ -178,7 +178,23 @@ fun TetrisBoardCanvas(
                     val localProgress = (clearProgress * 1.5f - distanceFromCenter).coerceIn(0f, 1f)
                     val alpha = 1f - localProgress
                     if (alpha > 0.01f) {
-                        drawRect(lockedColor.copy(alpha = alpha), topLeft, Size(cellSize - 2f, cellSize - 2f))
+                        if (themeType == ThemeType.CLASSIC && lockedClassicBitmap != null) {
+                            drawImage(
+                                image = lockedClassicBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt()),
+                                alpha = alpha
+                            )
+                        } else if (themeType == ThemeType.MODERN && lockedModernBitmap != null) {
+                            drawImage(
+                                image = lockedModernBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt()),
+                                alpha = alpha
+                            )
+                        } else {
+                            drawRect(lockedColor.copy(alpha = alpha), topLeft, Size(cellSize - 2f, cellSize - 2f))
+                        }
                     }
                     continue
                 }

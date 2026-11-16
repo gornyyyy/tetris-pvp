@@ -13,7 +13,7 @@ import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.ui.MenuScreen
-import com.example.tetrisandroid.ui.TetrisScreen
+import com.example.tetrisandroid.ui.game.TetrisScreen
 import com.example.tetrisandroid.ui.theme.TetrisAndroidTheme
 
 class MainActivity : ComponentActivity() {
