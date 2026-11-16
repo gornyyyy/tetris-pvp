@@ -283,6 +283,23 @@ fun TetrisBoardCanvas(
                             drawRect(wallColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
                         }
                     }
+                    4 -> {
+                        if (themeType == ThemeType.CLASSIC && lockedClassicBitmap != null) {
+                            drawImage(
+                                image = lockedClassicBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
+                            )
+                        } else if (themeType == ThemeType.MODERN && lockedModernBitmap != null) {
+                            drawImage(
+                                image = lockedModernBitmap,
+                                dstOffset = IntOffset(topLeft.x.toInt(), topLeft.y.toInt()),
+                                dstSize = IntSize(cellSize.toInt(), cellSize.toInt())
+                            )
+                        } else {
+                            drawRect(lockedColor, topLeft, Size(cellSize - 2f, cellSize - 2f))
+                        }
+                    }
                     else -> Unit
                 }
             }

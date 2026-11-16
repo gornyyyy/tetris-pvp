@@ -22,21 +22,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val versionHandler = VersionHandler(applicationContext)
-        versionHandler.saveCurrentVersionIfFirstRun()
+        versionHandler.saveCurrentVersion()
 
         val statsStorage = GameStatsStorage(applicationContext)
         val gameSettings = GameSettings(applicationContext)
         val layoutSettings = LayoutSettings(applicationContext)
         val audioSettings = AudioSettings(applicationContext)
 
-        val versionChanged = versionHandler.isVersionChanged()
-        val initialOldRecords = if (versionChanged) versionHandler.getOldRecords(statsStorage) else null
-
         setContent {
             TetrisAndroidTheme {
                 val audioManager = remember { GameAudioManager(applicationContext, audioSettings) }
                 var currentMode by remember { mutableStateOf<GameMode?>(null) }
-                var oldRecords by remember { mutableStateOf(initialOldRecords) }
                 var openLayoutEditorAfterMenu by remember { mutableStateOf(false) }
                 var gameSessionKey by remember { mutableStateOf(0) }
 
@@ -47,11 +43,8 @@ class MainActivity : ComponentActivity() {
                         statsStorage = statsStorage,
                         audioSettings = audioSettings,
                         audioManager = audioManager,
-                        oldRecordsOnUpdate = oldRecords,
-                        onUpdateDialogClose = {
-                            versionHandler.saveCurrentVersion()
-                            oldRecords = null
-                        },
+                        oldRecordsOnUpdate = null,
+                        onUpdateDialogClose = {},
                         onStartGame = { mode ->
                             currentMode = mode
                             gameSessionKey++

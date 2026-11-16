@@ -15,10 +15,11 @@ android {
         targetSdk = 37
         versionCode = 5
         versionName = "3.1"
-        buildConfigField("String", "PVP_SERVER_URL", "\"wss://10.99.99.1:8443\"")
+        buildConfigField("String", "PVP_SERVER_URL", "\"wss://solar-maple-1196.a.tuna.free/ws\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
 
     buildTypes {
         release {

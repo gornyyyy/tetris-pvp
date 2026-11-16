@@ -45,6 +45,7 @@ class GameCompetitive(
             startGarbageAnimation(queuedGarbage)
             queuedGarbage = 0
         }
+        reportIfChanged()
     }
 
     fun reportIfChanged() {

@@ -423,7 +423,7 @@ fun TetrisScreen(
 
         Box(modifier = Modifier.weight(bottomWeight).fillMaxWidth()) {
             GameControlButtons(
-                enabled = !isPaused,
+                enabled = !isPaused && matchStarted,
                 buttonColor = buttonColor,
                 buttonPressed = buttonPressed,
                 textColor = textColor,

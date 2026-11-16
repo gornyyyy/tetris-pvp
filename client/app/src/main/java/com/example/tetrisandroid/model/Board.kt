@@ -163,15 +163,18 @@ class Board {
         return cleared
     }
 
-    fun addGarbageLine() {
+    fun addGarbageLine(holeColumn: Int = -1): Boolean {
+        if (grid[0].any { it != 0 }) return false
+
         for (r in 0 until grid.size - 1) {
             grid[r] = grid[r + 1].copyOf()
             variantGrid[r] = variantGrid[r + 1].copyOf()
         }
         val hole = (0 until grid[0].size).random()
         for (c in grid[0].indices) {
-            grid[grid.size - 1][c] = if (c == hole) 0 else 2
+            grid[grid.size - 1][c] = if (c == hole) 0 else 4
             variantGrid[grid.size - 1][c] = 0
         }
+        return true
     }
 }

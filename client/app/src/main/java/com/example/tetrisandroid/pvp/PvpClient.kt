@@ -37,6 +37,8 @@ class PvpClient(private val serverUrl: String) {
     )
     val events: SharedFlow<PvpEvent> = _events
 
+    private var lastSentScore = 0
+
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected
 
@@ -78,11 +80,21 @@ class PvpClient(private val serverUrl: String) {
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "onFailure", t)
+                val responseInfo = response?.let {
+                    "code=${it.code}, message='${it.message}', body='${it.body?.string()}'"
+                } ?: "no HTTP response"
+
+                Log.e(
+                    TAG,
+                    "WebSocket onFailure | URL: ${ws.request().url} | Error: ${t.javaClass.simpleName}: ${t.message} | HTTP: $responseInfo",
+                    t
+                )
+
                 _connected.value = false
                 webSocket = null
                 _events.tryEmit(PvpEvent.Disconnected)
             }
+
 
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "onClosed $code $reason")
@@ -97,20 +109,25 @@ class PvpClient(private val serverUrl: String) {
      * Проверяет доступность сервера: открывает отдельный WebSocket и ждёт onOpen/onFailure.
      * Возвращает true, если сервер ответил за [timeoutMs] мс.
      */
-    suspend fun ping(timeoutMs: Long = 3000L): Boolean {
+    suspend fun ping(timeoutMs: Long = 5000L): Boolean {
         return withContext(Dispatchers.IO) {
             val latch = CountDownLatch(1)
             val result = AtomicBoolean(false)
 
+            Log.d(TAG, "PING start -> $serverUrl")
+
             val request = Request.Builder().url(serverUrl).build()
             val ws = client.newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(ws: WebSocket, response: Response) {
+                    Log.d(TAG, "PING success -> code=${response.code}")
                     result.set(true)
                     latch.countDown()
                     ws.close(1000, "ping")
                 }
 
                 override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                    val respInfo = response?.let { "code=${it.code}, msg=${it.message}" } ?: "no HTTP response"
+                    Log.e(TAG, "PING onFailure | URL: $serverUrl | ${t.javaClass.simpleName}: ${t.message} | $respInfo", t)
                     result.set(false)
                     latch.countDown()
                 }
@@ -118,11 +135,13 @@ class PvpClient(private val serverUrl: String) {
 
             val ok = latch.await(timeoutMs, TimeUnit.MILLISECONDS)
             if (!ok) {
+                Log.e(TAG, "PING timeout after ${timeoutMs}ms -> $serverUrl")
                 ws.cancel()
             }
             result.get() && ok
         }
     }
+
 
     private fun parse(text: String) {
         val json = JSONObject(text)
@@ -143,7 +162,8 @@ class PvpClient(private val serverUrl: String) {
                 PvpEvent.OpponentScore(
                     score = json.optInt("score"),
                     level = json.optInt("level"),
-                    lines = json.optInt("lines")
+                    lines = json.optInt("lines"),
+                    gained = json.optInt("gained")
                 )
             )
             "add_garbage" -> _events.tryEmit(
@@ -160,13 +180,15 @@ class PvpClient(private val serverUrl: String) {
     }
 
     // --- Отправка событий ---
-
     fun sendScore(score: Int, level: Int, lines: Int) {
+        val gained = (score - lastSentScore).coerceAtLeast(0)
+        lastSentScore = score
         send(JSONObject().apply {
             put("type", "score_update")
             put("score", score)
             put("level", level)
             put("lines", lines)
+            put("gained", gained)   // очков получено с прошлого сообщения
         })
     }
 

@@ -19,7 +19,8 @@ sealed class PvpEvent {
     data class OpponentScore(
         val score: Int,
         val level: Int,
-        val lines: Int
+        val lines: Int,
+        val gained: Int = 0
     ) : PvpEvent()
 
     /** Соперник очистил линии — добавить мусор. */

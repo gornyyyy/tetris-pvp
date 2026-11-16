@@ -6,11 +6,4 @@
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
-
-    <domain-config>
-        <domain includeSubdomains="false">10.99.99.1</domain>
-        <trust-anchors>
-            <certificates src="@raw/cert_10_99_99_1" />
-        </trust-anchors>
-    </domain-config>
 </network-security-config>
