@@ -38,6 +38,8 @@ class GameAudioManager(
     private var currentGameTrack: Int = 0
     private var currentGameLevel: Int = 1
     private var isGameMusicMode = false
+    
+    private var lastGameTrack: Int = 0
 
     init {
         loadSounds()
@@ -113,6 +115,7 @@ class GameAudioManager(
             resumeMusic()
         } else {
             currentGameTrack = chooseGameTrack(level)
+            lastGameTrack = currentGameTrack
             playMusicTrack(currentGameTrack)
         }
     }
@@ -124,6 +127,7 @@ class GameAudioManager(
     private fun playNextGameTrack() {
         if (isGameMusicMode) {
             currentGameTrack = chooseGameTrack(currentGameLevel)
+            lastGameTrack = currentGameTrack
             playMusicTrack(currentGameTrack)
         }
     }
@@ -132,26 +136,39 @@ class GameAudioManager(
      * Выбирает трек для текущего уровня с учетом правил:
      * - 5% шанс на menu (2+) или menu_2 (2-18)
      * - Иначе: slow (1-7), mid (8-19), playtime (всегда)
+     * - Исключаем повтор предыдущего трека
      */
     private fun chooseGameTrack(level: Int): Int {
+        val availableTracks = mutableListOf<Int>()
+
         if (Random.nextInt(100) < 5) {
             if (level in 2..18) {
-                return if (Random.nextBoolean()) R.raw.music_menu else R.raw.music_menu_2
+                availableTracks.add(R.raw.music_menu)
+                availableTracks.add(R.raw.music_menu_2)
             } else if (level >= 2) {
-                return R.raw.music_menu
+                availableTracks.add(R.raw.music_menu)
+            }
+        } else {
+            when {
+                level in 1..7 -> {
+                    availableTracks.add(R.raw.music_playtime_slow)
+                    availableTracks.add(R.raw.music_playtime)
+                }
+                level in 8..19 -> {
+                    availableTracks.add(R.raw.music_playtime_mid)
+                    availableTracks.add(R.raw.music_playtime)
+                }
+                else -> {
+                    availableTracks.add(R.raw.music_playtime)
+                }
             }
         }
 
-        // Обычные треки
-        return when {
-            level in 1..7 -> {
-                if (Random.nextBoolean()) R.raw.music_playtime_slow else R.raw.music_playtime
-            }
-            level in 8..19 -> {
-                if (Random.nextBoolean()) R.raw.music_playtime_mid else R.raw.music_playtime
-            }
-            else -> R.raw.music_playtime
+        if (availableTracks.size > 1) {
+            availableTracks.remove(lastGameTrack)
         }
+
+        return availableTracks.randomOrNull() ?: lastGameTrack
     }
 
     fun playDialogMusic(isWin: Boolean, isHighScore: Boolean) {
