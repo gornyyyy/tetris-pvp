@@ -10,14 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.tetrisandroid.pvp.LocalPvpManager
-import com.example.tetrisandroid.pvp.LocalSocketTransport
 import com.example.tetrisandroid.pvp.PvpTransport
-import com.example.tetrisandroid.ui.pvp.*
 import com.example.tetrisandroid.ui.theme.*
-import kotlinx.coroutines.delay
+import com.example.tetrisandroid.ui.pvp.*
 
 enum class LocalPvpMode { ONLINE, LOCAL_HOST, LOCAL_CLIENT }
 
@@ -34,37 +30,7 @@ fun PvpRoomScreen(
 
     var name by remember { mutableStateOf("") }
     var localMode by remember { mutableStateOf(LocalPvpMode.ONLINE) }
-    var isConnectingLocal by remember { mutableStateOf(false) }
     val nameValid = name.trim().length in 2..16
-
-    val context = LocalContext.current
-    val localPvpManager = remember { LocalPvpManager(context) }
-    val peers by localPvpManager.peers.collectAsState()
-    val isGroupOwner by localPvpManager.isGroupOwner.collectAsState()
-    val groupOwnerIp by localPvpManager.groupOwnerIp.collectAsState()
-    val connectionError by localPvpManager.connectionError.collectAsState()
-
-    LaunchedEffect(Unit) { localPvpManager.init() }
-    DisposableEffect(Unit) { onDispose { localPvpManager.release() } }
-
-    LaunchedEffect(localMode) {
-        isConnectingLocal = false
-    }
-
-    LaunchedEffect(groupOwnerIp, isGroupOwner, localMode) {
-        if (localMode == LocalPvpMode.LOCAL_CLIENT && groupOwnerIp != null && !isGroupOwner) {
-            delay(500)
-            val transport = LocalSocketTransport(
-                isHost = false,
-                hostIp = groupOwnerIp,
-                tcpPort = 8988,
-                playerName = name.trim()
-            )
-            isConnectingLocal = false
-            transport.connect()
-            onStartGameWithTransport(transport, null, name.trim())
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -96,7 +62,6 @@ fun PvpRoomScreen(
         )
         Spacer(Modifier.height(24.dp))
 
-        // Переключатель режимов
         Row(
             modifier = Modifier.fillMaxWidth(0.9f).background(muted.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -133,14 +98,11 @@ fun PvpRoomScreen(
             )
 
             LocalPvpMode.LOCAL_HOST -> PvpLocalHostSection(
-                isLightTheme = isLightTheme,
                 btnColor = btn,
                 txtColor = txt,
                 mutedColor = muted,
                 name = name,
                 nameValid = nameValid,
-                localPvpManager = localPvpManager,
-                connectionError = connectionError,
                 onStartGameWithTransport = onStartGameWithTransport
             )
 
@@ -148,13 +110,9 @@ fun PvpRoomScreen(
                 btnColor = btn,
                 txtColor = txt,
                 mutedColor = muted,
+                name = name,
                 nameValid = nameValid,
-                localPvpManager = localPvpManager,
-                peers = peers,
-                connectionError = connectionError,
-                groupOwnerIp = groupOwnerIp,
-                isConnectingLocal = isConnectingLocal,
-                onConnectingStateChange = { isConnectingLocal = it }
+                onStartGameWithTransport = onStartGameWithTransport
             )
         }
 

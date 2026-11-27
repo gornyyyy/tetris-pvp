@@ -183,9 +183,8 @@ fun TetrisScreen(
             transport.connect()
             transport.joinRoom(roomId, playerName)
         }
-        else if (transport is LocalSocketTransport) {
-            transport.connect()
-        }
+
+        transport.sendReady()
 
         transport.events.collect { event ->
             when (event) {
@@ -196,8 +195,8 @@ fun TetrisScreen(
                 }
                 is PvpEvent.Joined -> {
                     opponentConnected = event.opponentConnected
-                    event.opponentName?.let { opponentNickname = it }
-                    pvpStatus = if (event.opponentConnected) "Матч начался" else "Ожидание соперника…"
+                    event.opponentName?.takeIf { it.isNotBlank() }?.let { opponentNickname = it }
+                    pvpStatus = "Соперник подключился, ожидание входа в комнату…"
                 }
                 is PvpEvent.RoomCreated -> { /* handled in PvpRoomScreen */ }
                 is PvpEvent.Start -> {

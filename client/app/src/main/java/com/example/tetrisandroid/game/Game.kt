@@ -228,6 +228,9 @@ abstract class Game(
     /** Запускает анимацию появления мусора. */
     protected fun startGarbageAnimation(lines: Int) {
         if (lines <= 0) return
+
+        repeat(lines) { board.addGarbageLine() }
+
         garbageLines = lines
         garbageProgress = 0f
         isGarbageAnimating = true
@@ -235,9 +238,8 @@ abstract class Game(
         onUpdate()
     }
 
-    /** Завершает анимацию — применяет мусорные линии к board. */
+    /** Завершает анимацию — просто сбрасывает флаги */
     private fun finishGarbageAnimation() {
-        repeat(garbageLines) { board.addGarbageLine() }
         garbageLines = 0
         garbageProgress = 0f
         isGarbageAnimating = false

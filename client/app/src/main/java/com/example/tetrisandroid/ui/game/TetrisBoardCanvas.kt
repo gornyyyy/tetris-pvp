@@ -153,12 +153,12 @@ fun TetrisBoardCanvas(
         val offsetY = (size.height - cellSize * visibleRows) / 2f
 
         val floorRow = grid.lastIndex
-        val insertRow = floorRow - 1
 
-        val rawProgress = if (garbageLines > 0) {
-            (garbageProgress * garbageLines).coerceIn(0f, garbageLines.toFloat())
-        } else 0f
-        val fraction = rawProgress - rawProgress.toInt()
+        val riseShift = if (garbageLines > 0) {
+            garbageLines * cellSize * (1f - garbageProgress)
+        } else {
+            0f
+        }
 
         // 1) Фон поля
         drawRect(color = background, topLeft = Offset(offsetX, offsetY), size = Size(cellSize * 10, cellSize * 20))
@@ -177,14 +177,9 @@ fun TetrisBoardCanvas(
         for (r in 4 until grid.size) {
             val isClearingRow = r in clearingLines
             val isFloorRow = r == floorRow
-            val isInsertRow = r == insertRow
 
             for (c in 0 until 10) {
-                val rowShift = when {
-                    isFloorRow -> 0f
-                    isInsertRow && garbageLines > 0 -> (1f - fraction) * cellSize
-                    else -> -rawProgress * cellSize
-                }
+                val rowShift = if (isFloorRow) 0f else riseShift
 
                 val topLeft = Offset(
                     offsetX + c * cellSize,
@@ -314,17 +309,13 @@ fun TetrisBoardCanvas(
             }
         }
 
+        // 4) Ghost-блоки
         if (highlightColumn && ghostBlocks.isNotEmpty() && clearingLines.isEmpty()) {
             for ((gx, gy) in ghostBlocks) {
                 if (gy < 4) continue
 
                 val isGhostFloor = gy == floorRow
-                val isGhostInsert = gy == insertRow
-                val ghostShift = when {
-                    isGhostFloor -> 0f
-                    isGhostInsert && garbageLines > 0 -> (1f - fraction) * cellSize
-                    else -> -rawProgress * cellSize
-                }
+                val ghostShift = if (isGhostFloor) 0f else riseShift
 
                 val topLeft = Offset(
                     offsetX + gx * cellSize,

@@ -29,22 +29,27 @@ interface PvpTransport {
 
     /** Мягко отключиться. */
     fun disconnect()
+
+    fun sendReady() {}
 }
 
 // Утилита для получения локального IP (нужна для хоста в локальной игре)
-fun getLocalIpAddress(): String? {
+fun getLocalIpAddresses(): List<String> {
+    val ips = mutableListOf<String>()
     try {
         val interfaces = NetworkInterface.getNetworkInterfaces().asSequence()
         for (intf in interfaces) {
+            if (!intf.isUp || intf.isLoopback) continue
+
             val addrs = intf.inetAddresses.asSequence()
             for (addr in addrs) {
                 if (!addr.isLoopbackAddress && addr is Inet4Address) {
-                    return addr.hostAddress
+                    ips.add(addr.hostAddress)
                 }
             }
         }
     } catch (e: Exception) {
         e.printStackTrace()
     }
-    return null
+    return ips.distinct()
 }
