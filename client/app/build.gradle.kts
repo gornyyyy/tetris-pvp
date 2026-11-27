@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.tetrisandroid"
         minSdk = 24
         targetSdk = 37
-        versionCode = 6
-        versionName = "4.0"
+        versionCode = 7
+        versionName = "4.1"
         buildConfigField("String", "PVP_SERVER_URL", "\"wss://solar-maple-1196.a.tuna.free/ws\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

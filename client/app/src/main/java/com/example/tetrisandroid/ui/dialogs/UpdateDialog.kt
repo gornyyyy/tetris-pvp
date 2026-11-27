@@ -85,7 +85,7 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Ну и по традиции:",
+                    text = "Ну и просто потому что:",
                     color = txt,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
@@ -107,7 +107,7 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = onClose, // <-- Просто закрывает диалог, НИЧЕГО не сбрасывает
+                    onClick = onClose,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isLightTheme) Color(0xFFB0C4D8) else Color(0xFF415A77),
                         contentColor = txt
@@ -115,7 +115,7 @@ fun UpdateDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
-                    Text("Жесткий хайп 🤟", style = MaterialTheme.typography.titleMedium)
+                    Text("Лютейший хайп 🤟", style = MaterialTheme.typography.titleMedium)
                 }
             }
         }

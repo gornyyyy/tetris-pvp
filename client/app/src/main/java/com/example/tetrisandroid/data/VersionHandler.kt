@@ -25,9 +25,9 @@ fun getUpdateNotes(oldVersion: Int, currentVersion: Int): List<PatchNote> {
             "Добавлена возможность играть по локалке"
         )),
         PatchNote(7, listOf(
-            "Упрощено подключение к комнате при \nигре в локальной сети"
-        )
-        )
+            "Упрощено подключение к комнате при игре в локальной сети",
+            "Добавлено сохранение ников при перезаходе в пвп режим"
+        ))
     )
 
     return allPatches.filter { it.version > oldVersion && it.version <= currentVersion }
