@@ -36,7 +36,7 @@ class WebSocketTransport(private val serverUrl: String) : PvpTransport {
     private var lastSentScore = 0
 
     // --- Методы для ручного управления комнатой (используются в PvpRoomScreen) ---
-    fun createRoom(roomId: String, name: String, startLevel: Int = 1) {
+    fun createRoom(roomId: String, name: String, startLevel: Int = 1, enableGarbage: Boolean = true) {
         sendRaw(JSONObject().apply {
             put("type", "create_room")
             put("roomId", roomId)

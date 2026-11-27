@@ -28,7 +28,9 @@ fun PvpOnlineSection(
     mutedColor: Color,
     name: String,
     nameValid: Boolean,
-    onStartGameWithTransport: (PvpTransport, String?, String) -> Unit
+    startLevel: Int,
+    enableGarbage: Boolean,
+    onStartGameWithTransport: (transport: PvpTransport, roomId: String?, playerName: String, startLevel: Int, enableGarbage: Boolean) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
@@ -36,34 +38,9 @@ fun PvpOnlineSection(
     var codeInput by remember { mutableStateOf("") }
     var generatedCode by remember { mutableStateOf<String?>(null) }
     var currentTransport by remember { mutableStateOf<PvpTransport?>(null) }
-    var startLevel by remember { mutableStateOf(1) }
     var isCheckingServer by remember { mutableStateOf(false) }
     var showServerUnavailable by remember { mutableStateOf(false) }
 
-    // Стартовый уровень
-    Row(
-        modifier = Modifier.fillMaxWidth(0.9f),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text("Стартовый уровень:", color = txtColor, style = MaterialTheme.typography.bodyMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { if (startLevel > 1) startLevel-- }) {
-                Text("−", color = txtColor, style = MaterialTheme.typography.titleLarge)
-            }
-            Text(
-                "$startLevel", color = txtColor,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.width(24.dp), textAlign = TextAlign.Center
-            )
-            IconButton(onClick = { if (startLevel < 15) startLevel++ }) {
-                Text("+", color = txtColor, style = MaterialTheme.typography.titleLarge)
-            }
-        }
-    }
-    Spacer(Modifier.height(16.dp))
-
-    // Создать / Войти
     if (generatedCode == null) {
         Button(
             onClick = {
@@ -77,11 +54,11 @@ fun PvpOnlineSection(
                             isCheckingServer = false
                             showServerUnavailable = true
                         } else {
-                            val code = generateRoomCode()
+                            val code = (1..6).map { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".random() }.joinToString("")
                             generatedCode = code
                             currentTransport = transport
                             transport.connect()
-                            transport.createRoom(code, name.trim(), startLevel)
+                            transport.createRoom(code, name.trim(), startLevel, enableGarbage)
                             isCheckingServer = false
                         }
                     }
@@ -98,10 +75,7 @@ fun PvpOnlineSection(
     } else {
         Spacer(Modifier.height(16.dp))
         Text("Ваш код комнаты:", color = mutedColor, style = MaterialTheme.typography.labelMedium)
-        Text(
-            generatedCode!!, color = txtColor,
-            style = MaterialTheme.typography.displayMedium, textAlign = TextAlign.Center
-        )
+        Text(generatedCode!!, color = txtColor, style = MaterialTheme.typography.displayMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text("Передайте его другу", color = mutedColor, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(24.dp))
@@ -109,7 +83,9 @@ fun PvpOnlineSection(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                currentTransport?.let { onStartGameWithTransport(it, generatedCode, name.trim()) }
+                currentTransport?.let { transport ->
+                    onStartGameWithTransport(transport, generatedCode, name.trim(), startLevel, enableGarbage)
+                }
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50), contentColor = Color.White),
             shape = RoundedCornerShape(12.dp),
@@ -128,7 +104,6 @@ fun PvpOnlineSection(
         Spacer(Modifier.height(24.dp))
     }
 
-    // Вход по коду
     OutlinedTextField(
         value = codeInput,
         onValueChange = { codeInput = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) },
@@ -153,7 +128,7 @@ fun PvpOnlineSection(
                     } else {
                         transport.connect()
                         currentTransport = transport
-                        onStartGameWithTransport(transport, codeInput, name.trim())
+                        onStartGameWithTransport(transport, codeInput, name.trim(), startLevel, enableGarbage)
                     }
                 }
             }
@@ -175,9 +150,4 @@ fun PvpOnlineSection(
             onDismiss = { showServerUnavailable = false }
         )
     }
-}
-
-private fun generateRoomCode(): String {
-    val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    return (1..6).map { chars.random() }.joinToString("")
 }

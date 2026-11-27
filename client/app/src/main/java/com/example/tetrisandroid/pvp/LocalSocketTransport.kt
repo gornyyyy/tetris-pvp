@@ -19,7 +19,8 @@ class LocalSocketTransport(
     private val hostIp: String? = null,
     private val tcpPort: Int = 8988,
     private val startLevel: Int = 1,
-    private val playerName: String = "Игрок"
+    private val playerName: String = "Игрок",
+    private val enableGarbage: Boolean = true
 ) : PvpTransport {
 
     companion object {
@@ -134,8 +135,9 @@ class LocalSocketTransport(
             put("seed", seed)
             put("startLevel", startLevel)
             put("opponentName", playerName)
+            put("enableGarbage", enableGarbage)
         })
-        _events.tryEmit(PvpEvent.Start(seed, startLevel))
+        _events.tryEmit(PvpEvent.Start(seed, startLevel, enableGarbage))
         matchStarted = true
         Log.d(TAG, "▶ Матч запущен (оба игрока в комнате), seed=$seed")
     }
@@ -217,7 +219,6 @@ class LocalSocketTransport(
     private fun parse(text: String) {
         val json = JSONObject(text)
         when (json.getString("type")) {
-            // === Хост получает ===
             "hello" -> {
                 val name = json.optString("name", "Соперник")
                 opponentName = name
@@ -240,6 +241,7 @@ class LocalSocketTransport(
                 maybeStart()
             }
             "start" -> {
+                val garbage = json.optBoolean("enableGarbage", true)
                 json.optString("opponentName").takeIf { it.isNotBlank() }?.let {
                     opponentName = it
                     _events.tryEmit(PvpEvent.Joined("", if (isHost) "p2" else "p1", true, it))
@@ -247,7 +249,8 @@ class LocalSocketTransport(
                 _events.tryEmit(
                     PvpEvent.Start(
                         seed = json.optLong("seed"),
-                        startLevel = json.optInt("startLevel", 1)
+                        startLevel = json.optInt("startLevel", 1),
+                        enableGarbage = garbage
                     )
                 )
                 matchStarted = true

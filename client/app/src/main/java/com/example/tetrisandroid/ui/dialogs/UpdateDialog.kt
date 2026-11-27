@@ -36,7 +36,7 @@ fun UpdateDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.85f) // <-- Ограничиваем высоту, чтобы диалог не улетал за экран
+                .fillMaxHeight(0.85f)
                 .background(bg, RoundedCornerShape(16.dp))
                 .padding(24.dp)
         ) {
@@ -44,7 +44,7 @@ fun UpdateDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()) // <-- Включаем скролл
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text("Обновление!", color = txt, style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))

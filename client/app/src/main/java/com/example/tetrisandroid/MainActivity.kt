@@ -20,7 +20,6 @@ import com.example.tetrisandroid.ui.screens.PvpRoomScreen
 import com.example.tetrisandroid.ui.screens.TetrisScreen
 import com.example.tetrisandroid.ui.theme.TetrisAndroidTheme
 
-// Простая навигация без внешних библиотек
 sealed interface Screen {
     object Menu : Screen
     object PvpRoom : Screen
@@ -28,7 +27,9 @@ sealed interface Screen {
         val mode: GameMode,
         val transport: PvpTransport?,
         val roomId: String?,
-        val playerName: String
+        val playerName: String,
+        val startLevel: Int = 1,
+        val enableGarbage: Boolean = true
     ) : Screen
 }
 
@@ -98,8 +99,15 @@ class MainActivity : ComponentActivity() {
                         PvpRoomScreen(
                             isLightTheme = gameSettings.isLightTheme,
                             audioManager = audioManager,
-                            onStartGameWithTransport = { transport, roomId, playerName ->
-                                currentScreen = Screen.Game(GameMode.COMPETITIVE, transport, roomId, playerName)
+                            onStartGameWithTransport = { transport, roomId, playerName, startLevel, enableGarbage ->
+                                currentScreen = Screen.Game(
+                                    mode = GameMode.COMPETITIVE,
+                                    transport = transport,
+                                    roomId = roomId,
+                                    playerName = playerName,
+                                    startLevel = startLevel,
+                                    enableGarbage = enableGarbage
+                                )
                                 gameSessionKey++
                             },
                             onBack = { currentScreen = Screen.Menu }
@@ -118,12 +126,10 @@ class MainActivity : ComponentActivity() {
                                 transport = screen.transport,
                                 roomId = screen.roomId,
                                 playerName = screen.playerName,
-                                onExitToMenu = {
-                                    currentScreen = Screen.Menu
-                                },
-                                onRestart = {
-                                    gameSessionKey++
-                                },
+                                startLevel = screen.startLevel,
+                                enableGarbage = screen.enableGarbage,
+                                onExitToMenu = { currentScreen = Screen.Menu },
+                                onRestart = { gameSessionKey++ },
                                 onOpenLayoutEditor = {
                                     currentScreen = Screen.Menu
                                     openLayoutEditorAfterMenu = true

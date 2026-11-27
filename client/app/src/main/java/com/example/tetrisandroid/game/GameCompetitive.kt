@@ -16,6 +16,8 @@ class GameCompetitive(
     override val modeName = "Competitive"
     override val modeId = "competitive"
 
+    var enableGarbage: Boolean = true
+
     private var lastReportedScore = -1
     private var lastReportedLevel = -1
     private var lastReportedLines = -1
@@ -33,7 +35,7 @@ class GameCompetitive(
             1 -> 100; 2 -> 300; 3 -> 500; 4 -> 800; else -> 0
         }
 
-        if (cleared >= 2) {
+        if (enableGarbage && cleared >= 2) {
             onAttack(cleared - 1)
             onLineClearEvent(cleared)
         }

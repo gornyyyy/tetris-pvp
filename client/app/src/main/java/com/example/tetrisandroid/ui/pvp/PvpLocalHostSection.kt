@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.tetrisandroid.pvp.LocalRoomDiscovery
 import com.example.tetrisandroid.pvp.LocalSocketTransport
 import com.example.tetrisandroid.pvp.PvpTransport
 import com.example.tetrisandroid.pvp.getLocalNetworkInfo
@@ -20,82 +21,22 @@ fun PvpLocalHostSection(
     mutedColor: Color,
     name: String,
     nameValid: Boolean,
-    onStartGameWithTransport: (PvpTransport, String?, String) -> Unit
+    startLevel: Int,
+    enableGarbage: Boolean,
+    roomDiscovery: LocalRoomDiscovery,
+    onStartGameWithTransport: (transport: PvpTransport, roomId: String?, playerName: String, startLevel: Int, enableGarbage: Boolean) -> Unit
 ) {
-    var startLevel by remember { mutableStateOf(1) }
     var roomCreated by remember { mutableStateOf(false) }
     var transport by remember { mutableStateOf<LocalSocketTransport?>(null) }
-
     val myNetworks = remember { getLocalNetworkInfo() }
-
     var enteredGame by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(0.9f),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text("Стартовый уровень:", color = txtColor, style = MaterialTheme.typography.bodyMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { if (startLevel > 1) startLevel-- }) {
-                Text("−", color = txtColor, style = MaterialTheme.typography.titleLarge)
-            }
-            Text(
-                "$startLevel", color = txtColor,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.width(24.dp), textAlign = TextAlign.Center
-            )
-            IconButton(onClick = { if (startLevel < 15) startLevel++ }) {
-                Text("+", color = txtColor, style = MaterialTheme.typography.titleLarge)
-            }
-        }
-    }
-    Spacer(Modifier.height(16.dp))
-
     Text(
-        "Создайте комнату и сообщите свой IP-адрес второму игроку.\n" +
-                "Это может быть IP локальной Wi-Fi сети или VPN (ZeroTier, WireGuard и т.д.).",
+        "Создайте комнату. Клиенты увидят её автоматически в списке ниже.",
         color = mutedColor, textAlign = TextAlign.Center,
         style = MaterialTheme.typography.bodySmall
     )
     Spacer(Modifier.height(16.dp))
-
-    if (myNetworks.isNotEmpty()) {
-        Text("Ваши доступные IP-Addresses:", color = mutedColor, style = MaterialTheme.typography.labelMedium)
-        Spacer(Modifier.height(8.dp))
-
-        myNetworks.forEach { net ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = net.ipAddress,
-                    color = txtColor,
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = net.displayName,
-                    color = mutedColor,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        Spacer(Modifier.height(4.dp))
-        Text("Порт: 8988", color = mutedColor, style = MaterialTheme.typography.bodySmall)
-    } else {
-        Text(
-            "Не удалось определить IP. Проверьте подключение к Wi-Fi или VPN.",
-            color = Color(0xFFE53935),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-
-    Spacer(Modifier.height(24.dp))
 
     Button(
         onClick = {
@@ -104,27 +45,28 @@ fun PvpLocalHostSection(
                     isHost = true,
                     tcpPort = 8988,
                     startLevel = startLevel,
-                    playerName = name.trim()
+                    playerName = name.trim(),
+                    enableGarbage = enableGarbage
                 )
                 t.connect()
                 transport = t
                 roomCreated = true
+
+                val bestIp = myNetworks.firstOrNull()?.ipAddress ?: "127.0.0.1"
+                roomDiscovery.startHosting("${name.trim()}'s Room", bestIp, 8988)
             }
         },
         enabled = nameValid && !roomCreated,
         colors = ButtonDefaults.buttonColors(
-            containerColor = btnColor,
-            contentColor = txtColor,
+            containerColor = btnColor, contentColor = txtColor,
             disabledContainerColor = btnColor.copy(alpha = 0.3f),
             disabledContentColor = mutedColor.copy(alpha = 0.7f)
         ),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(0.9f).height(56.dp)
     ) {
-        Text(
-            if (roomCreated) "Комната создана" else "Создать комнату",
-            style = MaterialTheme.typography.titleMedium
-        )
+        if (roomCreated) Text("Комната создана", style = MaterialTheme.typography.titleMedium)
+        else Text("Создать комнату", style = MaterialTheme.typography.titleMedium)
     }
 
     Spacer(Modifier.height(12.dp))
@@ -133,41 +75,38 @@ fun PvpLocalHostSection(
         onClick = {
             enteredGame = true
             transport?.let { t ->
-                onStartGameWithTransport(t, null, name.trim())
+                onStartGameWithTransport(t, null, name.trim(), startLevel, enableGarbage)
             }
         },
         enabled = roomCreated && transport != null,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF4CAF50),
-            contentColor = Color.White,
-            disabledContainerColor = Color(0xFF4CAF50).copy(alpha = 0.3f),
-            disabledContentColor = Color.White.copy(alpha = 0.5f)
-        ),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50), contentColor = Color.White),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(0.9f).height(64.dp)
     ) {
-        Text("Войти в комнату", style = MaterialTheme.typography.titleMedium)
+        Text("Войти в комнату и ждать", style = MaterialTheme.typography.titleMedium)
     }
 
-    if (roomCreated) {
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Комната создана. Сообщите IP второму игроку и нажмите «Войти в комнату».",
-            color = mutedColor, textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodySmall
-        )
-    } else {
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Сначала создайте комнату — после этого появится кнопка входа.",
-            color = mutedColor, textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodySmall
-        )
+    Spacer(Modifier.height(24.dp))
+    
+    if (myNetworks.isNotEmpty()) {
+        Text("Ваши IP-адреса (для ручной настройки):", color = mutedColor, style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(8.dp))
+        myNetworks.forEach { net ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 4.dp)) {
+                Text(text = net.ipAddress, color = txtColor, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+                Text(text = net.displayName, color = mutedColor, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text("Порт: 8988", color = mutedColor, style = MaterialTheme.typography.bodySmall)
     }
 
     DisposableEffect(Unit) {
         onDispose {
-            if (!enteredGame) transport?.disconnect()
+            if (!enteredGame) {
+                transport?.disconnect()
+                roomDiscovery.stop()
+            }
         }
     }
 }

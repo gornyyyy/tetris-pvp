@@ -14,7 +14,7 @@ sealed class PvpEvent {
     ) : PvpEvent()
 
     /** Оба игрока на месте — можно стартовать. */
-    data class Start(val seed: Long, val startLevel: Int) : PvpEvent()
+    data class Start(val seed: Long, val startLevel: Int, val enableGarbage: Boolean = true) : PvpEvent()
 
     /** Очки соперника (для отображения разницы). */
     data class OpponentScore(

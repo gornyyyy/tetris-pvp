@@ -38,6 +38,8 @@ fun TetrisScreen(
     transport: PvpTransport?,
     roomId: String?,
     playerName: String,
+    startLevel: Int = 1,
+    enableGarbage: Boolean = true,
     onExitToMenu: () -> Unit,
     onRestart: () -> Unit,
     onOpenLayoutEditor: () -> Unit
@@ -178,7 +180,6 @@ fun TetrisScreen(
     LaunchedEffect(isPvp, transport, roomId, playerName) {
         if (!isPvp || transport == null) return@LaunchedEffect
 
-        // Подключаемся и входим в комнату только если это WebSocket и есть roomId
         if (transport is WebSocketTransport && roomId != null) {
             transport.connect()
             transport.joinRoom(roomId, playerName)
@@ -202,7 +203,10 @@ fun TetrisScreen(
                 is PvpEvent.Start -> {
                     pvpStatus = "Матч начался"
                     audioManager.stopMusic()
-                    (game as? GameCompetitive)?.initMatch(event.seed, event.startLevel)
+                    (game as? GameCompetitive)?.let {
+                        it.enableGarbage = event.enableGarbage
+                        it.initMatch(event.seed, event.startLevel)
+                    }
                     refreshUi()
                     matchStarted = true
 
