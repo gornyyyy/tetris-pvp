@@ -321,7 +321,7 @@ fun TetrisScreen(
         }
         LaunchedEffect(uiState.isRunning && !isPvp) {
             if (!uiState.isRunning) {
-                delay(2500)
+                delay(1300)
                 if ((game as? GameWithFinish)?.isWon == true) {
                     showWinDialog = true
                     audioManager.playDialogMusic(isWin = true, isHighScore = true)

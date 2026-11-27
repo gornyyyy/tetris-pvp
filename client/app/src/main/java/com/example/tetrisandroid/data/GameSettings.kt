@@ -12,6 +12,10 @@ enum class ThemeType(val id: String, val displayName: String) {
 class GameSettings(context: Context) {
     private val prefs = context.getSharedPreferences("tetris_prefs", Context.MODE_PRIVATE)
 
+    var username: String
+        get() = prefs.getString("username", "") ?: ""
+        set(value) = prefs.edit().putString("username", value).apply()
+
     var lastGameMode: GameMode
         get() = GameMode.values().firstOrNull { it.id == prefs.getString("last_game_mode", "classic") } ?: GameMode.CLASSIC
         set(value) = prefs.edit().putString("last_game_mode", value.id).apply()

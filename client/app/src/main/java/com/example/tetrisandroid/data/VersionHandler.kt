@@ -25,7 +25,6 @@ fun getUpdateNotes(oldVersion: Int, currentVersion: Int): List<PatchNote> {
             "Добавлена возможность играть по локалке"
         )),
         PatchNote(7, listOf(
-            "Оптимизация отрисовки поля",
             "Упрощено подключение к комнате при \nигре в локальной сети"
         )
         )

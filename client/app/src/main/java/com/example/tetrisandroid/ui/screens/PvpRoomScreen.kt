@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.audio.GameAudioManager
 import com.example.tetrisandroid.pvp.LocalRoomDiscovery
 import com.example.tetrisandroid.pvp.PvpTransport
@@ -27,6 +28,7 @@ enum class LocalPvpMode { ONLINE, LOCAL_HOST, LOCAL_CLIENT }
 
 @Composable
 fun PvpRoomScreen(
+    gameSettings: GameSettings,
     isLightTheme: Boolean,
     audioManager: GameAudioManager,
     onStartGameWithTransport: (transport: PvpTransport, roomId: String?, playerName: String, startLevel: Int, enableGarbage: Boolean) -> Unit,
@@ -37,7 +39,7 @@ fun PvpRoomScreen(
     val txt = if (isLightTheme) LightText else DarkText
     val muted = if (isLightTheme) LightMuted else DarkMuted
 
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(gameSettings.username) }
     var localMode by remember { mutableStateOf(LocalPvpMode.ONLINE) }
     val nameValid = name.trim().length in 2..16
 
@@ -79,7 +81,6 @@ fun PvpRoomScreen(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ✅ Кнопка «Назад» в левом верхнем углу
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -98,7 +99,10 @@ fun PvpRoomScreen(
 
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it.take(16) },
+            onValueChange = {
+                name = it.take(16)
+                gameSettings.username = name
+            },
             label = { Text("Ваш ник") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(0.9f)

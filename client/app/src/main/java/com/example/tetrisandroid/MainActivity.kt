@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity() {
 
                     is Screen.PvpRoom -> {
                         PvpRoomScreen(
+                            gameSettings = gameSettings,
                             isLightTheme = gameSettings.isLightTheme,
                             audioManager = audioManager,
                             onStartGameWithTransport = { transport, roomId, playerName, startLevel, enableGarbage ->
