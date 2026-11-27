@@ -18,6 +18,7 @@ import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
+import com.example.tetrisandroid.data.PatchNote
 import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.ui.components.ModeSelector
@@ -37,6 +38,7 @@ fun MenuScreen(
     audioSettings: AudioSettings,
     audioManager: GameAudioManager,
     oldRecordsOnUpdate: VersionHandler.LegacyRecords?,
+    updateNotes: List<PatchNote>,
     onUpdateDialogClose: () -> Unit,
     onNavigateToPvpRoom: () -> Unit,
     onStartSinglePlayerGame: (GameMode) -> Unit,
@@ -48,7 +50,7 @@ fun MenuScreen(
     var selectedMode by remember { mutableStateOf(gameSettings.lastGameMode) }
     var showSettings by remember { mutableStateOf(false) }
     var showLayoutEditor by remember { mutableStateOf(initialShowLayoutEditor) }
-    var showUpdateDialog by remember { mutableStateOf(oldRecordsOnUpdate != null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     val background = if (isLightTheme) LightBackground else DarkBackground
     val buttonColor = if (isLightTheme) LightButton else DarkButton
@@ -57,6 +59,12 @@ fun MenuScreen(
 
     var themeType by remember { mutableStateOf(gameSettings.themeType) }
     var keepFallenColor by remember { mutableStateOf(gameSettings.keepFallenColor) }
+
+    LaunchedEffect(oldRecordsOnUpdate) {
+        if (oldRecordsOnUpdate != null) {
+            showUpdateDialog = true
+        }
+    }
 
     LaunchedEffect(Unit) {
         audioManager.playRandomMenuMusic()
@@ -167,6 +175,7 @@ fun MenuScreen(
     if (showUpdateDialog && oldRecordsOnUpdate != null) {
         UpdateDialog(
             oldRecords = oldRecordsOnUpdate,
+            updateNotes = updateNotes,
             isLightTheme = isLightTheme,
             onClose = {
                 showUpdateDialog = false

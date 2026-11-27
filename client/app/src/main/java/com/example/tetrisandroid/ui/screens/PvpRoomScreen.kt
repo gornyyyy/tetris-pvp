@@ -11,6 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.example.tetrisandroid.audio.GameAudioManager
 import com.example.tetrisandroid.pvp.PvpTransport
 import com.example.tetrisandroid.ui.theme.*
 import com.example.tetrisandroid.ui.pvp.*
@@ -20,6 +23,7 @@ enum class LocalPvpMode { ONLINE, LOCAL_HOST, LOCAL_CLIENT }
 @Composable
 fun PvpRoomScreen(
     isLightTheme: Boolean,
+    audioManager: GameAudioManager,
     onStartGameWithTransport: (transport: PvpTransport, roomId: String?, playerName: String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -31,6 +35,14 @@ fun PvpRoomScreen(
     var name by remember { mutableStateOf("") }
     var localMode by remember { mutableStateOf(LocalPvpMode.ONLINE) }
     val nameValid = name.trim().length in 2..16
+
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        audioManager.stopDialogSound()
+        audioManager.stopMusic()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        audioManager.playRandomMenuMusic()
+    }
 
     Column(
         modifier = Modifier

@@ -10,7 +10,9 @@ import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.GameSettings
 import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
+import com.example.tetrisandroid.data.PatchNote
 import com.example.tetrisandroid.data.VersionHandler
+import com.example.tetrisandroid.data.getUpdateNotes
 import com.example.tetrisandroid.game.GameMode
 import com.example.tetrisandroid.pvp.PvpTransport
 import com.example.tetrisandroid.ui.screens.MenuScreen
@@ -36,7 +38,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val versionHandler = VersionHandler(applicationContext)
-        versionHandler.saveCurrentVersion()
+        versionHandler.saveCurrentVersionIfFirstRun()
 
         val statsStorage = GameStatsStorage(applicationContext)
         val gameSettings = GameSettings(applicationContext)
@@ -52,6 +54,21 @@ class MainActivity : ComponentActivity() {
                 var gameSessionKey by remember { mutableStateOf(0) }
                 var openLayoutEditorAfterMenu by remember { mutableStateOf(false) }
 
+                var updateNotes by remember { mutableStateOf<List<PatchNote>>(emptyList()) }
+                var updateRecords by remember { mutableStateOf<VersionHandler.LegacyRecords?>(null) }
+
+                LaunchedEffect(Unit) {
+                    val savedVersion = versionHandler.getSavedVersion()
+                    val currentVersion = BuildConfig.VERSION_CODE
+
+                    if (savedVersion != -1 && savedVersion < currentVersion) {
+                        updateNotes = getUpdateNotes(savedVersion, currentVersion)
+                        updateRecords = versionHandler.getOldRecords(statsStorage)
+                    } else {
+                        versionHandler.saveCurrentVersionIfFirstRun()
+                    }
+                }
+
                 when (val screen = currentScreen) {
                     is Screen.Menu -> {
                         MenuScreen(
@@ -60,8 +77,13 @@ class MainActivity : ComponentActivity() {
                             statsStorage = statsStorage,
                             audioSettings = audioSettings,
                             audioManager = audioManager,
-                            oldRecordsOnUpdate = null,
-                            onUpdateDialogClose = {},
+                            oldRecordsOnUpdate = updateRecords,
+                            updateNotes = updateNotes,
+                            onUpdateDialogClose = {
+                                versionHandler.saveCurrentVersion()
+                                updateRecords = null
+                                updateNotes = emptyList()
+                            },
                             onNavigateToPvpRoom = { currentScreen = Screen.PvpRoom },
                             onStartSinglePlayerGame = { mode ->
                                 currentScreen = Screen.Game(mode, null, null, "Player")
@@ -75,6 +97,7 @@ class MainActivity : ComponentActivity() {
                     is Screen.PvpRoom -> {
                         PvpRoomScreen(
                             isLightTheme = gameSettings.isLightTheme,
+                            audioManager = audioManager,
                             onStartGameWithTransport = { transport, roomId, playerName ->
                                 currentScreen = Screen.Game(GameMode.COMPETITIVE, transport, roomId, playerName)
                                 gameSessionKey++

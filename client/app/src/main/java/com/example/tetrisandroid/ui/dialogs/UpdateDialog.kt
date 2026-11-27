@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.tetrisandroid.data.PatchNote
 import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.ui.theme.DarkAccent
 import com.example.tetrisandroid.ui.theme.LightAccent
@@ -23,6 +24,7 @@ import com.example.tetrisandroid.ui.theme.LightAccent
 @Composable
 fun UpdateDialog(
     oldRecords: VersionHandler.LegacyRecords,
+    updateNotes: List<PatchNote>,
     isLightTheme: Boolean,
     onClose: () -> Unit
 ) {
@@ -34,32 +36,56 @@ fun UpdateDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.85f) // <-- Ограничиваем высоту, чтобы диалог не улетал за экран
                 .background(bg, RoundedCornerShape(16.dp))
                 .padding(24.dp)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.verticalScroll(rememberScrollState())
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()) // <-- Включаем скролл
             ) {
                 Text("Обновление!", color = txt, style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Что нового:\n" +
-                            "• Добавлены скинчики \n" +
-                            "• Добавлены музыка и всякие приколюшки \n" +
-                            "• Исправлены старые штуки баги и тд\n" +
-                            "в целом и не важно что конкретно",
-                    color = txt,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
+                if (updateNotes.isEmpty()) {
+                    Text(
+                        text = "Вы обновились до последней версии!",
+                        color = txt,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    updateNotes.forEach { patch ->
+                        // Заголовок патча
+                        Text(
+                            text = "Патч ${patch.version}",
+                            color = accent,
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Список изменений
+                        patch.notes.forEach { note ->
+                            Text(
+                                text = "• $note",
+                                color = txt,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Ну и как же без этого:",
+                    text = "Ну и по традиции:",
                     color = txt,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
@@ -72,7 +98,7 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Ваши рекорды сохранены. Продолжайте играть и ставьте новые!",
+                    text = "Ваши рекорды сохранены. Продолжайте играть, побеждайте друзей и т.д.!",
                     color = txt,
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
@@ -81,14 +107,16 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = onClose,
+                    onClick = onClose, // <-- Просто закрывает диалог, НИЧЕГО не сбрасывает
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isLightTheme) Color(0xFFB0C4D8) else Color(0xFF415A77),
                         contentColor = txt
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) { Text("Ряльна хайп 🤟", style = MaterialTheme.typography.titleMedium) }
+                ) {
+                    Text("Жесткий хайп 🤟", style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
     }
