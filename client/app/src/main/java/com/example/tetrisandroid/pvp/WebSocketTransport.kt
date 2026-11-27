@@ -3,9 +3,7 @@ package com.example.tetrisandroid.pvp
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -13,14 +11,14 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-class PvpClient(private val serverUrl: String) {
+class WebSocketTransport(private val serverUrl: String) : PvpTransport {
 
     companion object {
-        private const val TAG = "PvpClient"
+        private const val TAG = "WebSocketTransport"
     }
 
     private val client = OkHttpClient.Builder()
@@ -32,19 +30,14 @@ class PvpClient(private val serverUrl: String) {
     private var webSocket: WebSocket? = null
     private val pendingMessages = ArrayDeque<String>()
 
-    private val _events = MutableSharedFlow<PvpEvent>(
-        replay = 0,
-        extraBufferCapacity = 64
-    )
-    val events: SharedFlow<PvpEvent> = _events
+    private val _events = MutableSharedFlow<PvpEvent>(extraBufferCapacity = 64)
+    override val events: SharedFlow<PvpEvent> = _events
 
     private var lastSentScore = 0
 
-    private val _connected = MutableStateFlow(false)
-    val connected: StateFlow<Boolean> = _connected
-
+    // --- Методы для ручного управления комнатой (используются в PvpRoomScreen) ---
     fun createRoom(roomId: String, name: String, startLevel: Int = 1) {
-        send(JSONObject().apply {
+        sendRaw(JSONObject().apply {
             put("type", "create_room")
             put("roomId", roomId)
             put("name", name)
@@ -53,111 +46,119 @@ class PvpClient(private val serverUrl: String) {
     }
 
     fun joinRoom(roomId: String, name: String) {
-        send(JSONObject().apply {
+        sendRaw(JSONObject().apply {
             put("type", "join")
             put("roomId", roomId)
             put("name", name)
         })
     }
 
-    /** Подключиться к серверу и войти в комнату. */
-    fun connect() {
-        if (webSocket != null) {
-            Log.w(TAG, "connect() called while already connected")
-            return
-        }
+    // --- Реализация PvpTransport ---
+    override fun connect() {
+        if (webSocket != null) return
 
         val request = Request.Builder().url(serverUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
-
             override fun onOpen(ws: WebSocket, response: Response) {
                 Log.d(TAG, "onOpen")
-                _connected.value = true
-                // всё, что накопилось до подключения, отправляем теперь
+                _connected = true
                 while (pendingMessages.isNotEmpty()) {
-                    val payload = pendingMessages.removeFirst()
-                    Log.d(TAG, "> (flush) $payload")
-                    ws.send(payload)
+                    ws.send(pendingMessages.removeFirst())
                 }
                 _events.tryEmit(PvpEvent.Connected)
             }
 
             override fun onMessage(ws: WebSocket, text: String) {
                 Log.d(TAG, "< $text")
-                runCatching { parse(text) }
-                    .onFailure { Log.e(TAG, "parse error", it) }
+                parse(text)
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                val responseInfo = response?.let {
-                    "code=${it.code}, message='${it.message}', body='${it.body?.string()}'"
-                } ?: "no HTTP response"
-
-                Log.e(
-                    TAG,
-                    "WebSocket onFailure | URL: ${ws.request().url} | Error: ${t.javaClass.simpleName}: ${t.message} | HTTP: $responseInfo",
-                    t
-                )
-
-                _connected.value = false
+                Log.e(TAG, "onFailure", t)
+                _connected = false
                 webSocket = null
                 _events.tryEmit(PvpEvent.Disconnected)
             }
 
-
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "onClosed $code $reason")
-                _connected.value = false
+                _connected = false
                 webSocket = null
                 _events.tryEmit(PvpEvent.Disconnected)
             }
         })
     }
 
-    /**
-     * Проверяет доступность сервера: открывает отдельный WebSocket и ждёт onOpen/onFailure.
-     * Возвращает true, если сервер ответил за [timeoutMs] мс.
-     */
+    override fun sendScore(score: Int, level: Int, lines: Int) {
+        val gained = (score - lastSentScore).coerceAtLeast(0)
+        lastSentScore = score
+        sendRaw(JSONObject().apply {
+            put("type", "score_update")
+            put("score", score)
+            put("level", level)
+            put("lines", lines)
+            put("gained", gained)
+        })
+    }
+
+    override fun sendLineClear(lines: Int) {
+        sendRaw(JSONObject().apply {
+            put("type", "line_clear")
+            put("lines", lines)
+        })
+    }
+
+    override fun sendGameOver() = sendRaw(JSONObject().put("type", "game_over"))
+    override fun sendWin() = sendRaw(JSONObject().put("type", "win"))
+
+    override fun disconnect() {
+        runCatching { sendRaw(JSONObject().put("type", "leave")) }
+        pendingMessages.clear()
+        webSocket?.close(1000, "bye")
+        webSocket = null
+        _connected = false
+    }
+
+    // --- Ping (для MenuScreen) ---
     suspend fun ping(timeoutMs: Long = 5000L): Boolean {
         return withContext(Dispatchers.IO) {
             val latch = CountDownLatch(1)
             val result = AtomicBoolean(false)
-
-            Log.d(TAG, "PING start -> $serverUrl")
-
             val request = Request.Builder().url(serverUrl).build()
             val ws = client.newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(ws: WebSocket, response: Response) {
-                    Log.d(TAG, "PING success -> code=${response.code}")
                     result.set(true)
                     latch.countDown()
                     ws.close(1000, "ping")
                 }
-
                 override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                    val respInfo = response?.let { "code=${it.code}, msg=${it.message}" } ?: "no HTTP response"
-                    Log.e(TAG, "PING onFailure | URL: $serverUrl | ${t.javaClass.simpleName}: ${t.message} | $respInfo", t)
                     result.set(false)
                     latch.countDown()
                 }
             })
-
             val ok = latch.await(timeoutMs, TimeUnit.MILLISECONDS)
-            if (!ok) {
-                Log.e(TAG, "PING timeout after ${timeoutMs}ms -> $serverUrl")
-                ws.cancel()
-            }
+            if (!ok) ws.cancel()
             result.get() && ok
         }
     }
 
+    // --- Вспомогательные ---
+    private var _connected = false
+
+    private fun sendRaw(json: JSONObject) {
+        val payload = json.toString()
+        val ws = webSocket
+        if (ws == null) {
+            pendingMessages.addLast(payload)
+        } else {
+            ws.send(payload)
+        }
+    }
 
     private fun parse(text: String) {
         val json = JSONObject(text)
         when (val type = json.getString("type")) {
-            "room_created" -> _events.tryEmit(
-                PvpEvent.RoomCreated(json.optString("roomId"))
-            )
+            "room_created" -> _events.tryEmit(PvpEvent.RoomCreated(json.optString("roomId")))
             "joined" -> _events.tryEmit(
                 PvpEvent.Joined(
                     roomId = json.optString("roomId"),
@@ -180,61 +181,11 @@ class PvpClient(private val serverUrl: String) {
                     gained = json.optInt("gained")
                 )
             )
-            "add_garbage" -> _events.tryEmit(
-                PvpEvent.AddGarbage(json.optInt("lines"))
-            )
+            "add_garbage" -> _events.tryEmit(PvpEvent.AddGarbage(json.optInt("lines")))
             "opponent_game_over" -> _events.tryEmit(PvpEvent.OpponentGameOver)
             "opponent_win" -> _events.tryEmit(PvpEvent.OpponentWin)
             "opponent_disconnected" -> _events.tryEmit(PvpEvent.OpponentDisconnected)
-            "error" -> _events.tryEmit(
-                PvpEvent.Error(json.optString("message"))
-            )
-            else -> Log.w(TAG, "unknown type: $type")
+            "error" -> _events.tryEmit(PvpEvent.Error(json.optString("message")))
         }
-    }
-
-    // --- Отправка событий ---
-    fun sendScore(score: Int, level: Int, lines: Int) {
-        val gained = (score - lastSentScore).coerceAtLeast(0)
-        lastSentScore = score
-        send(JSONObject().apply {
-            put("type", "score_update")
-            put("score", score)
-            put("level", level)
-            put("lines", lines)
-            put("gained", gained)
-        })
-    }
-
-    fun sendLineClear(lines: Int) {
-        send(JSONObject().apply {
-            put("type", "line_clear")
-            put("lines", lines)
-        })
-    }
-
-    fun sendGameOver() = send(JSONObject().put("type", "game_over"))
-
-    fun sendWin() = send(JSONObject().put("type", "win"))
-
-    /** Мягкое отключение (сервер получит leave). */
-    private fun send(json: JSONObject) {
-        val payload = json.toString()
-        val ws = webSocket
-        if (ws == null) {
-            Log.w(TAG, "socket is null, queueing: $payload")
-            pendingMessages.addLast(payload)
-        } else {
-            Log.d(TAG, "> $payload")
-            ws.send(payload)
-        }
-    }
-
-    fun disconnect() {
-        runCatching { send(JSONObject().put("type", "leave")) }
-        pendingMessages.clear()
-        webSocket?.close(1000, "bye")
-        webSocket = null
-        _connected.value = false
     }
 }

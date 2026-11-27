@@ -13,7 +13,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.example.tetrisandroid.data.ThemeType
 import com.example.tetrisandroid.game.GameMode
-import com.example.tetrisandroid.ui.components.NextShapeCanvas
 import com.example.tetrisandroid.ui.theme.DarkAccent
 import com.example.tetrisandroid.ui.theme.LightAccent
 

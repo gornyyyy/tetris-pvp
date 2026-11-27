@@ -1,4 +1,4 @@
-package com.example.tetrisandroid.ui
+package com.example.tetrisandroid.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.example.tetrisandroid.BuildConfig
 import com.example.tetrisandroid.audio.GameAudioManager
 import com.example.tetrisandroid.data.AudioSettings
 import com.example.tetrisandroid.data.GameSettings
@@ -21,18 +20,14 @@ import com.example.tetrisandroid.data.GameStatsStorage
 import com.example.tetrisandroid.data.LayoutSettings
 import com.example.tetrisandroid.data.VersionHandler
 import com.example.tetrisandroid.game.GameMode
-import com.example.tetrisandroid.pvp.PvpClient
 import com.example.tetrisandroid.ui.components.ModeSelector
 import com.example.tetrisandroid.ui.components.SettingsButton
 import com.example.tetrisandroid.ui.components.StartButton
-import com.example.tetrisandroid.ui.dialogs.ServerUnavailableDialog
 import com.example.tetrisandroid.ui.dialogs.SettingsDialog
 import com.example.tetrisandroid.ui.dialogs.UpdateDialog
 import com.example.tetrisandroid.ui.game.formatScore
 import com.example.tetrisandroid.ui.layout.LayoutEditorScreen
 import com.example.tetrisandroid.ui.theme.*
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 
 @Composable
 fun MenuScreen(
@@ -43,7 +38,8 @@ fun MenuScreen(
     audioManager: GameAudioManager,
     oldRecordsOnUpdate: VersionHandler.LegacyRecords?,
     onUpdateDialogClose: () -> Unit,
-    onStartGame: (GameMode) -> Unit,
+    onNavigateToPvpRoom: () -> Unit,
+    onStartSinglePlayerGame: (GameMode) -> Unit,
     initialShowLayoutEditor: Boolean = false,
     onLayoutEditorClosed: () -> Unit = {}
 ) {
@@ -61,11 +57,6 @@ fun MenuScreen(
 
     var themeType by remember { mutableStateOf(gameSettings.themeType) }
     var keepFallenColor by remember { mutableStateOf(gameSettings.keepFallenColor) }
-
-    var isPinging by remember { mutableStateOf(false) }
-    var showServerUnavailable by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val pvpClient = remember { PvpClient(BuildConfig.PVP_SERVER_URL) }
 
     LaunchedEffect(Unit) {
         audioManager.playRandomMenuMusic()
@@ -105,7 +96,8 @@ fun MenuScreen(
             selectedMode = selectedMode,
             onModeSelected = {
                 selectedMode = it
-                gameSettings.lastGameMode = it},
+                gameSettings.lastGameMode = it
+            },
             buttonColor = buttonColor,
             textColor = textColor,
             mutedColor = mutedColor,
@@ -116,39 +108,11 @@ fun MenuScreen(
 
         StartButton(buttonColor, textColor) {
             if (selectedMode == GameMode.COMPETITIVE) {
-                scope.launch {
-                    isPinging = true
-                    val ok = pvpClient.ping(3000)
-                    isPinging = false
-                    if (ok) {
-                        onStartGame(selectedMode)
-                    } else {
-                        showServerUnavailable = true
-                    }
-                }
+                onNavigateToPvpRoom()
             } else {
                 audioManager.stopMusic()
-                onStartGame(selectedMode)
+                onStartSinglePlayerGame(selectedMode)
             }
-        }
-
-        if (showServerUnavailable) {
-            ServerUnavailableDialog(
-                isLightTheme = isLightTheme,
-                serverUrl = BuildConfig.PVP_SERVER_URL,
-                onRetry = {
-                    showServerUnavailable = false
-                    scope.launch {
-                        val ok = pvpClient.ping(3000)
-                        if (ok) {
-                            onStartGame(selectedMode)
-                        } else {
-                            showServerUnavailable = true
-                        }
-                    }
-                },
-                onDismiss = { showServerUnavailable = false }
-            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -224,7 +188,7 @@ fun ModeStatsCard(
     var isLightTheme by remember { mutableStateOf(gameSettings.isLightTheme) }
 
     if (mode == GameMode.COMPETITIVE) {
-        Text("matchmaking - скоро", color = mutedColor, style = MaterialTheme.typography.bodyMedium)
+        Text("Matchmaking / Локальная сеть", color = mutedColor, style = MaterialTheme.typography.bodyMedium)
         return
     }
 

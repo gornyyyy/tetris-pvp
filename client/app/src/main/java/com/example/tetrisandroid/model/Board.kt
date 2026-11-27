@@ -100,15 +100,18 @@ class Board {
     }
 
     fun spawnShape(): Shape {
-        val shape = when ((0..6).random()) {
+        val shapeTypeIndex = rng.nextInt(7)
+
+        val shape = when (shapeTypeIndex) {
             0 -> ShapeI(3, 0)
             1 -> ShapeO(4, 0)
             2 -> ShapeT(3, 0)
             3 -> ShapeS(3, 0)
             4 -> ShapeZ(3, 0)
             5 -> ShapeJ(3, 0)
-            else -> ShapeL(3, 0)
+            else -> ShapeL(3, 0) // 6
         }
+
         shape.variantIndex = when (shape) {
             is ShapeJ, is ShapeZ -> 0
             is ShapeL, is ShapeS -> 1

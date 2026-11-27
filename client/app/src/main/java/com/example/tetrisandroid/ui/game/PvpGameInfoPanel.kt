@@ -21,9 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.tetrisandroid.data.ThemeType
-import com.example.tetrisandroid.ui.game.UiState
-import com.example.tetrisandroid.ui.game.formatScore
-import com.example.tetrisandroid.ui.components.NextShapeCanvas
+import com.example.tetrisandroid.ui.screens.PvpMatchStatus
 import com.example.tetrisandroid.ui.theme.DarkAccent
 import com.example.tetrisandroid.ui.theme.LightAccent
 

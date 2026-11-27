@@ -212,7 +212,7 @@ abstract class Game(
             score += calculateScore(cleared, level)
         }
 
-        level = (linesClearedTotal / 10) + 1
+        level = startLevel + (linesClearedTotal / 10)
         fallDelay = calculateFallDelay(level)
 
         isClearing = false

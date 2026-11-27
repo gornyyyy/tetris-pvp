@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.tetrisandroid.data.ThemeType
-import com.example.tetrisandroid.ui.game.UiState
-import com.example.tetrisandroid.ui.components.TetrisBoardCanvas
 
 @Composable
 fun GameField(

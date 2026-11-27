@@ -1,4 +1,4 @@
-package com.example.tetrisandroid.ui.components
+package com.example.tetrisandroid.ui.game
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
@@ -152,12 +152,13 @@ fun TetrisBoardCanvas(
         val offsetX = (size.width - cellSize * 10) / 2f
         val offsetY = (size.height - cellSize * visibleRows) / 2f
 
-        // Сдвиг поля вверх при анимации мусора
-        val garbageOffset = if (garbageLines > 0) {
-            val totalProgress = garbageProgress * garbageLines
-            val partial = totalProgress - totalProgress.toInt()
-            partial * cellSize
+        val floorRow = grid.lastIndex
+        val insertRow = floorRow - 1
+
+        val rawProgress = if (garbageLines > 0) {
+            (garbageProgress * garbageLines).coerceIn(0f, garbageLines.toFloat())
         } else 0f
+        val fraction = rawProgress - rawProgress.toInt()
 
         // 1) Фон поля
         drawRect(color = background, topLeft = Offset(offsetX, offsetY), size = Size(cellSize * 10, cellSize * 20))
@@ -173,14 +174,21 @@ fun TetrisBoardCanvas(
         }
 
         // 3) Сетка и блоки
-        for (r in 4 until 24) {
+        for (r in 4 until grid.size) {
             val isClearingRow = r in clearingLines
+            val isFloorRow = r == floorRow
+            val isInsertRow = r == insertRow
 
             for (c in 0 until 10) {
-                val isFloorRow = r == grid.lastIndex
+                val rowShift = when {
+                    isFloorRow -> 0f
+                    isInsertRow && garbageLines > 0 -> (1f - fraction) * cellSize
+                    else -> -rawProgress * cellSize
+                }
+
                 val topLeft = Offset(
                     offsetX + c * cellSize,
-                    offsetY + (r - 4) * cellSize - if (isFloorRow) 0f else garbageOffset
+                    offsetY + (r - 4) * cellSize + rowShift
                 )
 
                 if (isClearingRow) {
@@ -210,7 +218,7 @@ fun TetrisBoardCanvas(
                     continue
                 }
 
-                if (!isClassicOrModern) {
+                if (!isClassicOrModern && !isFloorRow) {
                     drawRect(gridLineColor, topLeft, Size(cellSize - 1f, cellSize - 1f))
                 }
 
@@ -309,9 +317,18 @@ fun TetrisBoardCanvas(
         if (highlightColumn && ghostBlocks.isNotEmpty() && clearingLines.isEmpty()) {
             for ((gx, gy) in ghostBlocks) {
                 if (gy < 4) continue
+
+                val isGhostFloor = gy == floorRow
+                val isGhostInsert = gy == insertRow
+                val ghostShift = when {
+                    isGhostFloor -> 0f
+                    isGhostInsert && garbageLines > 0 -> (1f - fraction) * cellSize
+                    else -> -rawProgress * cellSize
+                }
+
                 val topLeft = Offset(
                     offsetX + gx * cellSize,
-                    offsetY + (gy - 4) * cellSize - garbageOffset
+                    offsetY + (gy - 4) * cellSize + ghostShift
                 )
 
                 if (themeType == ThemeType.CLASSIC && classicBitmaps != null) {
